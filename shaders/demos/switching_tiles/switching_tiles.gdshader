@@ -40,19 +40,6 @@ grid_square get_grid_square(vec2 uv)
 	return square;
 }
 
-/// Rotates the given UV around its center based on the given radians
-vec2 rotateAroundCenter(vec2 uv, float rad)
-{
-	float s = sin(rad);
-	float c = cos(rad);
-	mat2 rot = mat2(vec2(c, s), vec2(-s, c));
-
-	uv -= 0.5;	
-	uv = rot * uv;
-	uv += 0.5;
-	return uv;
-}
-
 /// Square (background) with a polygon (foreground) in its center
 /// Uses a regular polygon SDF (derived from Inigo Quilez)
 vec3 sample_polygon_square(vec2 uv, float sides, vec3 background, vec3 foreground)
@@ -80,16 +67,16 @@ vec3 sample_square(int class, vec2 internal_uv, bool is_moving)
 {
 	switch (class)
 	{
-		case 1: if (is_moving) { internal_uv = rotateAroundCenter(internal_uv, time*PI); }
+		case 1: if (is_moving) { internal_uv = rotate_around_center(internal_uv, time*PI); }
 				return sample_polygon_square(internal_uv, 4.0, vec3(0.15, 0.15, 0.15), vec3(1.0, 0.0, 0.0));
 				
-		case 2: if (is_moving) { internal_uv = rotateAroundCenter(internal_uv, time*2.0*PI); }
+		case 2: if (is_moving) { internal_uv = rotate_around_center(internal_uv, time*2.0*PI); }
 				return sample_polygon_square(internal_uv, 3.0, vec3(0.1, 0.1, 0.1), vec3(0.0, 1.0, 0.0));
 				
-		case 3: if (is_moving) { internal_uv = rotateAroundCenter(internal_uv, time*2.0*PI); }
+		case 3: if (is_moving) { internal_uv = rotate_around_center(internal_uv, time*2.0*PI); }
 				return sample_polygon_square(internal_uv, 5.0, vec3(0.05, 0.05, 0.05), vec3(1.0, 1.0, 0.0));
 				
-		default: if (is_moving) { internal_uv = rotateAroundCenter(internal_uv, time*PI); }
+		default: if (is_moving) { internal_uv = rotate_around_center(internal_uv, time*PI); }
 				return sample_polygon_square(internal_uv, 6.0, vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0));
 	}
 }

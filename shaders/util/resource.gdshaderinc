@@ -12,3 +12,16 @@ ivec2 pixel_coord(sampler2D tex, vec2 uv)
 {
 	return ivec2((uv * float(textureSize(tex, 0).x)));
 }
+
+/// Rotates the given UV around its center based on the given radians
+vec2 rotate_around_center(vec2 uv, float rad)
+{
+	float s = sin(rad);
+	float c = cos(rad);
+	mat2 rot = mat2(vec2(c, s), vec2(-s, c));
+
+	uv -= 0.5;	
+	uv = rot * uv;
+	uv += 0.5;
+	return uv;
+}
