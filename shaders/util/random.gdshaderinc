@@ -28,6 +28,7 @@ float hash_vec2_float(vec2 p, int seed)
 }
 
 // Hashes the given vec2 to another vec2 based on the given seed.
+// Both values of the hashed vector are in the range [0.0, 1.0)
 vec2 hash_vec2_vec2(vec2 p, int seed)
 {
     return vec2(hash_vec2_float(p, seed), hash_vec2_float(p + ARBITRARY_OFFSET, seed));
