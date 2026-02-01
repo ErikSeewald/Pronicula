@@ -24,6 +24,8 @@ uniform vec3 background_col: source_color = vec3(0.4, 0.8, 0.4);
 const int jitter_bounds = 3;
 const int center_idx = 1;
 
+const vec2 wheel_center_to_bottom = vec2(0.5, 0.8);
+
 // Samples the procedural SDF wheel texture based on the given UV.
 vec4 sample_wheel(vec2 uv, vec2 rotated_uv)
 {	
@@ -63,7 +65,7 @@ vec2 get_jittered_wheel_coords(vec2 coords)
 }
 
 // Draws wheels onto the current color at the given pre-jittered grid coordinates.
-vec3 draw_wheels(vec2 coords, vec3 cur_color, bool is_active)
+vec3 draw_wheels(vec2 coords, vec3 cur_color, bool is_active, float wheel_speed)
 {	
 	// Only draw wheel if the tile is the center of the jitter group
 	coords = get_jittered_wheel_coords(coords);
@@ -73,7 +75,8 @@ vec3 draw_wheels(vec2 coords, vec3 cur_color, bool is_active)
 		vec2 uv = fract(coords);
 		
 		// This one is used for the wheel rotation
-		vec2 rotated_uv = rotate_around_center(uv, hash_vec2_float(vec2(idx), seed) * time * (1.0 + 2.0*float(is_active)));
+		//wheel_speed = wheel_speed > 0.0 ? wheel_speed : time;
+		vec2 rotated_uv = rotate_around_center(uv, hash_vec2_float(vec2(idx), seed) * wheel_speed);
 		
 		// But still give all of them a small constant rotation to make them look more random
 		uv = rotate_around_center(uv, (hash_vec2_float(vec2(idx), seed) - 0.5) * 0.25);
@@ -100,67 +103,93 @@ vec4 sample_hamster(vec2 uv, vec3 color)
 	return value;
 }
 
-vec2 get_goal(vec2 cur_hamster, float t)
+// Third value says wether or not the target was chosen as a wheel
+vec3 get_goal(vec2 cur_hamster, float t)
 {
+	t = mod(t, 100000.0);
+	t = t == 0.0 ? 0.1 : t;
+	
 	vec2 hash = hash_vec2_vec2(cur_hamster * t, seed) * size;
 
-	// 50% chance for the goal to be a wheel
-	if (fract(hash.x) < 0.5)
+
+	// 75% chance for the goal to be a wheel
+	if (fract(hash.x) < 0.75)
 	{
 		vec2 jitter_seed = floor(hash / float(jitter_bounds));
 		vec2 goal = floor(hash / float(jitter_bounds)) * float(jitter_bounds) + vec2(1.0);
 		goal = jitter(goal, jitter_seed, seed, -jitter_intensity); // Inverse jitter
-		return goal;
+		return vec3(goal + wheel_center_to_bottom, 1.0);
 	}
+	
+	return vec3(hash, 0.0);
+}
 
-	return hash;
+// Speeds up until 0.25 then slows down again
+float get_wheel_speed(float t)
+{
+	if (t < 0.25)
+	{
+		float x = t / 0.25;
+		return x*x;
+	}
+	
+	float x = (t - 0.25) / 0.25;
+	float start = 1.0;
+	float delta = 1.0 - pow(1.0 - x, 3.0);
+	return start + delta;
 }
 
 // Draws hamsters onto the current color at the given grid coordinates.
-vec3 draw_hamsters(vec2 coords, vec3 cur_color, inout bool wheel_active)
+vec3 draw_hamsters(vec2 coords, vec3 cur_color, inout bool wheel_active, inout float wheel_speed)
 {
-	const int cycles = 8;
-	const float cycle_lengths[cycles] = {1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 24.0};
-
-	//vec2 shift = vec2(sin(time * 5.0), cos(time * 2.5));
-	vec2 shift = vec2(sin(time * 1.2), cos(time)) * 0.2;
+	const int cycles = 9;
+	const float full_cycle = 60.0;
+	const float cycle_lengths[cycles] = {/*1.0, 2.0, 3.0,*/4.0, 5.0, 6.0, 10.0, 12.0, 15.0, 20.0, 30.0, 60.0};
 
 	for (uint i = 0u; i < hamster_count; i++)
 	{
 		float idx = float(i);
+		
+		float st = time + 10.0 * hash_seedless(idx);
+		vec2 shift = vec2(sin(st * 2.2), cos(st*1.5)) * 0.5;
 
-		// Every 24 seconds, the cycle lengths of all of them change
-		// This is because 24 has 8 divisors, allowing for these cycle lengths
-		float last_switch = floor(time / 12.0);
+		// Every 60 t, the cycle lengths of all of them change
+		// This is because 60 has 12 divisors, allowing for these cycle lengths
+		float last_switch = floor(time / full_cycle);
 		float tt = cycle_lengths[int(hash_vec2_float(vec2(idx + last_switch), seed) * 100.0) % cycles];
-		tt = 24.0; //DEBUG
 		float phase = fract(time / tt);
 		float t0 = floor(time / tt) * tt;
 		float t1 = t0 + tt;
 
 		vec2 cur_hamster = hash_vec2_vec2(vec2(idx), seed);
-		vec2 last_goal = get_goal(cur_hamster, t0);
-		vec2 cur_goal = get_goal(cur_hamster, t1);
-		cur_hamster = last_goal - (last_goal - cur_goal) * phase + shift;
+		vec3 last_goal = get_goal(cur_hamster, t0);
+		vec3 cur_goal = get_goal(cur_hamster, t1);
+		cur_hamster = last_goal.xy - (last_goal.xy - cur_goal.xy) * phase + shift;
 
 		bool b = false;
 
-		vec2 jit = get_jittered_wheel_coords(last_goal);
+		vec2 jit = get_jittered_wheel_coords(last_goal.xy);
 		ivec2 wheel_idx = ivec2(jit);
-		if (wheel_idx.x % jitter_bounds == center_idx && wheel_idx.y % jitter_bounds == center_idx)
+		
+		// Only goals that were explicitly forced to be the wheel should be counted, otherwise position assumptions may be off
+		if (last_goal.z == 1.0)
 		{
 			if (phase < 0.5) 
 			{
-				cur_hamster = last_goal; b = true;
-				cur_hamster += vec2(0.5, 0.8);
-				cur_hamster = rotate_around_center(cur_hamster - last_goal, hash_vec2_float(vec2(wheel_idx), seed) * -time*0.5) + last_goal;
+				cur_hamster = last_goal.xy; b = true;
+				vec2 center = last_goal.xy - wheel_center_to_bottom;
 				
-				if (ivec2(coords/float(jitter_bounds)) == ivec2((last_goal + vec2(0.5)) /float(jitter_bounds)))
+				float t = (time - t0) / tt; // Start rotation at bottom of the wheel
+				float wheel_speed_temp = get_wheel_speed(t) * 20.0;
+				cur_hamster = rotate_around_center(cur_hamster - center, hash_vec2_float(vec2(wheel_idx), seed) * -wheel_speed_temp) + center;
+				
+				if (ivec2(coords/float(jitter_bounds)) == ivec2((last_goal.xy + vec2(0.5)) /float(jitter_bounds)))
 				{
 					wheel_active = true;
+					wheel_speed = wheel_speed_temp;
 				}
 			}
-			else {cur_hamster = last_goal - (last_goal - cur_goal) * (phase-0.5)*2.0 + shift;}
+			else {cur_hamster = last_goal.xy - (last_goal.xy - cur_goal.xy) * (phase-0.5)*2.0 + shift;}
 		}
 
 		float d = length(coords - cur_hamster);
@@ -169,13 +198,15 @@ vec3 draw_hamsters(vec2 coords, vec3 cur_color, inout bool wheel_active)
 			vec3 hamster_col = vec3(1.0, 1.0, 0.0);
 			/*switch (int(tt))
 				{
-					case 1: hamster_col = vec3(1.0, 0.0, 0.0); break;
-					case 2: hamster_col = vec3(0.0, 1.0, 0.0); break;
-					case 3: hamster_col = vec3(0.0, 0.0, 1.0); break;
-					case 4: hamster_col = vec3(1.0, 0.0, 1.0); break;
-					case 6: hamster_col = vec3(0.0, 1.0, 1.0); break;
-					case 8: hamster_col = vec3(1.0, 1.0, 0.0); break;
-					case 12: hamster_col = vec3(1.0, 1.0, 1.0); break;
+					case 4: hamster_col = vec3(1.0, 0.0, 0.0); break;
+					case 5: hamster_col = vec3(0.0, 1.0, 0.0); break;
+					case 6: hamster_col = vec3(0.0, 0.0, 1.0); break;
+					case 10: hamster_col = vec3(1.0, 0.0, 1.0); break;
+					case 12: hamster_col = vec3(0.0, 1.0, 1.0); break;
+					case 15: hamster_col = vec3(1.0, 1.0, 0.0); break;
+					case 20: hamster_col = vec3(1.0, 1.0, 1.0); break;
+					case 30: hamster_col = vec3(1.0, 0.5, 1.0); break;
+					case 60: hamster_col = vec3(1.0, 0.6, 1.0); break;
 
 				}*/
 			if (b) {hamster_col = vec3(0.0, 0.0, 0.0);}
@@ -194,6 +225,7 @@ void fragment()
 
 	COLOR.rgb = background_col;
 	bool wheel_active = false;
-	COLOR.rgb = draw_hamsters(grid_coords, COLOR.rgb, wheel_active);
-	COLOR.rgb = draw_wheels(grid_coords, COLOR.rgb, wheel_active);
+	float wheel_speed = 0.0;
+	COLOR.rgb = draw_hamsters(grid_coords, COLOR.rgb, wheel_active, wheel_speed);
+	COLOR.rgb = draw_wheels(grid_coords, COLOR.rgb, wheel_active, wheel_speed);
 }
