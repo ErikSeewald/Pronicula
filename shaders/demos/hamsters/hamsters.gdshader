@@ -15,7 +15,7 @@ uniform float outer_wheel_size = 0.45;
 
 group_uniforms hamsters;
 uniform uint hamster_count = 1;
-uniform float hamster_size = 0.2;
+uniform float hamster_size = 0.13;
 
 group_uniforms colors;
 uniform vec3 background_col: source_color = vec3(0.4, 0.8, 0.4);
@@ -93,13 +93,61 @@ vec4 sample_hamster(vec2 uv, vec3 color)
 {
 	// Origin already at hamster center
 	vec4 value = vec4(1.0, 1.0, 1.0, 0.0);
-
-	float alpha = -(length(uv) - hamster_size);
-
+	float alpha = 0.0;
+	const vec3 hamster_col = vec3(1.0, 0.45, 0.0);
+	const vec3 hamster_skin = vec3(1.0, 0.8, 0.8);
+	const vec3 hamster_skin_darker = vec3(1.0, 0.6, 0.6);
+	
+	// EARS
+	vec2 ear_A_offset = vec2(0.6, 0.9) * hamster_size;
+	vec2 ear_B_offset = vec2(-0.6, 0.9) * hamster_size;
+	float ear_A = -sd_circle(uv + ear_A_offset, hamster_size * 0.4);
+	float ear_B = -sd_circle(uv + ear_B_offset, hamster_size * 0.4);
+	
+	alpha = max(alpha, max(ear_A, ear_B));
 	float aa = fwidth(alpha);
-	vec4 circ = vec4(color, 1.0);
-
-	value = mix(value, circ, smoothstep(0.0, aa, alpha));
+	value = mix(value, vec4(hamster_col, 1.0), smoothstep(0.0, aa, alpha));
+	
+	float inner_ear_A = -sd_circle(uv + ear_A_offset, hamster_size * 0.25);
+	float inner_ear_B = -sd_circle(uv + ear_B_offset, hamster_size * 0.25);
+	
+	alpha = max(inner_ear_A, inner_ear_B);
+	value = mix(value, vec4(hamster_skin, 1.0), smoothstep(0.0, aa, alpha));
+	
+	// BODY
+	float head = -sd_circle(uv, hamster_size);
+	float head_white = -sd_circle(uv + vec2(0.0, -0.5) * hamster_size, hamster_size * 0.7);
+	
+	alpha = head;
+	aa = fwidth(alpha);
+	value = mix(value, vec4(hamster_col, 1.0), smoothstep(0.0, aa, alpha));
+	
+	alpha = min(head_white, head);
+	aa = fwidth(alpha);
+	value = mix(value, vec4(1.0), smoothstep(0.0, aa, alpha));
+	
+	// FACE
+	float eye_A = -sd_circle(uv + vec2(0.4, 0.2) * hamster_size, hamster_size * 0.22);
+	float eye_B = -sd_circle(uv + vec2(-0.4, 0.2) * hamster_size, hamster_size * 0.22);
+	float mouth = -sd_circle(uv + vec2(0.0, -0.5) * hamster_size, hamster_size * 0.1);
+	
+	alpha = max(mouth, max(eye_A, eye_B));
+	aa = fwidth(alpha);
+	value = mix(value, vec4(vec3(0.0), 1.0), smoothstep(0.0, aa, alpha));
+	
+	float eye_sparkle_A = -sd_circle(uv + vec2(0.32, 0.28) * hamster_size, hamster_size * 0.075);
+	float eye_sparkle_B = -sd_circle(uv + vec2(-0.32, 0.28) * hamster_size, hamster_size * 0.075);
+	
+	alpha = max(eye_sparkle_A, eye_sparkle_B);
+	aa = fwidth(alpha);
+	value = mix(value, vec4(1.0), smoothstep(0.0, aa, alpha));
+	
+	float nose = -sd_circle(uv, hamster_size * 0.25);
+	
+	alpha = nose;
+	aa = fwidth(alpha);
+	value = mix(value, vec4(hamster_skin_darker, 1.0), smoothstep(0.0, aa, alpha));
+	
 	return value;
 }
 
@@ -193,7 +241,7 @@ vec3 draw_hamsters(vec2 coords, vec3 cur_color, inout bool wheel_active, inout f
 		}
 
 		float d = length(coords - cur_hamster);
-		if (d < hamster_size + 0.1)
+		if (d < hamster_size * 1.5)
 		{
 			vec3 hamster_col = vec3(1.0, 1.0, 0.0);
 			/*switch (int(tt))
