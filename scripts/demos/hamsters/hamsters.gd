@@ -6,5 +6,5 @@ func _ready() -> void:
 	time = material.get_shader_parameter("time")
 
 func _process(delta: float) -> void:
-	time += delta * 3.0
+	time += delta
 	material.set_shader_parameter("time", time)

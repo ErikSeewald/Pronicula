@@ -16,6 +16,7 @@ uniform float outer_wheel_size = 0.45;
 group_uniforms hamsters;
 uniform uint hamster_count = 1;
 uniform float hamster_size = 0.13;
+uniform float hamster_bobbing = 50.0;
 
 group_uniforms colors;
 uniform vec3 background_col: source_color = vec3(0.4, 0.8, 0.4);
@@ -27,7 +28,7 @@ const int center_idx = 1;
 const vec2 wheel_center_to_bottom = vec2(0.5, 0.8);
 
 // Samples the procedural SDF wheel texture based on the given UV.
-vec4 sample_wheel(vec2 uv, vec2 rotated_uv)
+vec4 sample_wheel(vec2 uv, vec2 rotated_uv, vec3 cur_color)
 {	
 	uv -= vec2(0.5);
 	rotated_uv -= vec2(0.5);
@@ -40,8 +41,8 @@ vec4 sample_wheel(vec2 uv, vec2 rotated_uv)
 	float leg_right = sd_oriented_box(uv, vec2(0.0), vec2(0.42, 0.42), leg_width);
 	
 	float bar_width = leg_width * 0.65;
-	float axis_bar_h = sd_oriented_box(rotated_uv, vec2(outer_wheel_size, 0.0), vec2(-outer_wheel_size, 0.0), bar_width);
-	float axis_bar_v = sd_oriented_box(rotated_uv, vec2(0.0, outer_wheel_size), vec2(0.0, -outer_wheel_size), bar_width);
+	float axis_bar_h = sd_oriented_box(rotated_uv, vec2(outer_wheel_size * 0.9, 0.0), vec2(-outer_wheel_size * 0.9, 0.0), bar_width);
+	float axis_bar_v = sd_oriented_box(rotated_uv, vec2(0.0, outer_wheel_size * 0.9), vec2(0.0, -outer_wheel_size * 0.9), bar_width);
 	
 	float alpha = max(-main_wheel, -wheel_center);
 	alpha = max(max(alpha, -leg_left), -leg_right);
@@ -53,6 +54,7 @@ vec4 sample_wheel(vec2 uv, vec2 rotated_uv)
 	circ.rgb = mix(vec3(1.0, 0.0, 0.0), circ.rgb, smoothstep(0.0, aa, max(rotated_uv.x, 0.0)) * is_main_wheel);
 
 	vec4 value = vec4(1.0, 1.0, 1.0, 0.0);
+	alpha = alpha * float(length(background_col - cur_color) * (1.0 - float(is_main_wheel)) < 0.5);
 	value = mix(value, circ, smoothstep(0.0, aa, alpha));
 	return value;
 }
@@ -75,13 +77,12 @@ vec3 draw_wheels(vec2 coords, vec3 cur_color, bool is_active, float wheel_speed)
 		vec2 uv = fract(coords);
 		
 		// This one is used for the wheel rotation
-		//wheel_speed = wheel_speed > 0.0 ? wheel_speed : time;
-		vec2 rotated_uv = rotate_around_center(uv, hash_vec2_float(vec2(idx), seed) * wheel_speed);
+		vec2 rotated_uv = rotate_around_center(uv, wheel_speed);
 		
 		// But still give all of them a small constant rotation to make them look more random
 		uv = rotate_around_center(uv, (hash_vec2_float(vec2(idx), seed) - 0.5) * 0.25);
 		
-		vec4 wheel = sample_wheel(uv, rotated_uv);
+		vec4 wheel = sample_wheel(uv, rotated_uv, cur_color);
 		return mix(cur_color, wheel.rgb, wheel.a);
 	}
 
@@ -173,26 +174,19 @@ vec3 get_goal(vec2 cur_hamster, float t)
 }
 
 // Speeds up until 0.25 then slows down again
-float get_wheel_speed(float t)
+float get_wheel_speed(float t, vec2 idx)
 {
-	if (t < 0.25)
-	{
-		float x = t / 0.25;
-		return x*x;
-	}
-	
-	float x = (t - 0.25) / 0.25;
-	float start = 1.0;
-	float delta = 1.0 - pow(1.0 - x, 3.0);
-	return start + delta;
+	float individualizer = floor((hash_vec2_float(idx, seed) + 0.1) * 10.0); // Whole number to ensure multiple of 2PI
+	return 1.0 / (1.0 + exp(-(t*20.0 - 5.0))) * individualizer * 6.325; // 6.325to ensure integral from 0.0 to 0.5 is 2PI
 }
+
 
 // Draws hamsters onto the current color at the given grid coordinates.
 vec3 draw_hamsters(vec2 coords, vec3 cur_color, inout bool wheel_active, inout float wheel_speed)
 {
-	const int cycles = 9;
+	const int cycles = 6;
 	const float full_cycle = 60.0;
-	const float cycle_lengths[cycles] = {/*1.0, 2.0, 3.0,*/4.0, 5.0, 6.0, 10.0, 12.0, 15.0, 20.0, 30.0, 60.0};
+	const float cycle_lengths[cycles] = {/*1.0, 2.0, 3.0, 4.0, 5.0, 6.0, */ 10.0, 12.0, 15.0, 20.0, 30.0, 60.0};
 
 	for (uint i = 0u; i < hamster_count; i++)
 	{
@@ -219,6 +213,10 @@ vec3 draw_hamsters(vec2 coords, vec3 cur_color, inout bool wheel_active, inout f
 		vec2 jit = get_jittered_wheel_coords(last_goal.xy);
 		ivec2 wheel_idx = ivec2(jit);
 		
+		float wheel_speed_temp;
+		
+		vec2 bobbing_offset = vec2(0.0, sin(time * hamster_bobbing) * hamster_size * 0.1);
+		
 		// Only goals that were explicitly forced to be the wheel should be counted, otherwise position assumptions may be off
 		if (last_goal.z == 1.0)
 		{
@@ -228,19 +226,36 @@ vec3 draw_hamsters(vec2 coords, vec3 cur_color, inout bool wheel_active, inout f
 				vec2 center = last_goal.xy - wheel_center_to_bottom;
 				
 				float t = (time - t0) / tt; // Start rotation at bottom of the wheel
-				float wheel_speed_temp = get_wheel_speed(t) * 20.0;
-				cur_hamster = rotate_around_center(cur_hamster - center, hash_vec2_float(vec2(wheel_idx), seed) * -wheel_speed_temp) + center;
+				wheel_speed_temp = get_wheel_speed(t, vec2(wheel_idx));
+				vec2 floor_offset = -vec2(0.0, 0.7) * hamster_size;
+				bobbing_offset = vec2(0.0, sin(time * wheel_speed_temp * hamster_bobbing * 0.0005) * hamster_size * 0.2);
 				
-				if (ivec2(coords/float(jitter_bounds)) == ivec2((last_goal.xy + vec2(0.5)) /float(jitter_bounds)))
+				
+				if (ivec2(coords/float(jitter_bounds)) == ivec2(last_goal.xy / float(jitter_bounds)))
 				{
 					wheel_active = true;
-					wheel_speed = wheel_speed_temp;
+					if (wheel_speed == 0.0)
+					{wheel_speed = wheel_speed_temp; } // Wheel speed depends on first hamster in index order 
+					
+					
+				}
+				
+				if (wheel_speed_temp < wheel_speed)
+				{
+					// These ones tumble around instead
+					cur_hamster = rotate_around_center(cur_hamster - center + floor_offset + bobbing_offset, -wheel_speed_temp) + center;
+				}
+				else
+				{
+					cur_hamster = rotate_around_center(cur_hamster - center + floor_offset + bobbing_offset, sin(time * wheel_speed_temp * 0.001)) + center;
 				}
 			}
 			else {cur_hamster = last_goal.xy - (last_goal.xy - cur_goal.xy) * (phase-0.5)*2.0 + shift;}
 		}
 
-		float d = length(coords - cur_hamster);
+		if (!b) { cur_hamster += bobbing_offset; }
+		vec2 dif = coords - cur_hamster;
+		float d = length(dif);
 		if (d < hamster_size * 1.5)
 		{
 			vec3 hamster_col = vec3(1.0, 1.0, 0.0);
@@ -259,7 +274,9 @@ vec3 draw_hamsters(vec2 coords, vec3 cur_color, inout bool wheel_active, inout f
 				}*/
 			if (b) {hamster_col = vec3(0.0, 0.0, 0.0);}
 
-			vec4 hamster = sample_hamster(coords - cur_hamster, hamster_col);
+			vec2 hamster_centered = coords - cur_hamster;
+			if (b) { hamster_centered = rotate_around_origin(hamster_centered, -sin(time * wheel_speed_temp * 0.001) * 0.5); }
+			vec4 hamster = sample_hamster(hamster_centered, hamster_col);
 			cur_color = mix(cur_color, hamster.rgb, hamster.a);
 			// Do not return early, overlap is possible
 		}
@@ -273,6 +290,7 @@ void fragment()
 
 	COLOR.rgb = background_col;
 	bool wheel_active = false;
+	bool pixel_contains_hamster = false;
 	float wheel_speed = 0.0;
 	COLOR.rgb = draw_hamsters(grid_coords, COLOR.rgb, wheel_active, wheel_speed);
 	COLOR.rgb = draw_wheels(grid_coords, COLOR.rgb, wheel_active, wheel_speed);
