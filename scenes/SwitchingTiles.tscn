@@ -1,8 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://cvtfuw7duayua"]
+[gd_scene format=3 uid="uid://cvtfuw7duayua"]
 
 [ext_resource type="Shader" uid="uid://cuoksjfjbh1re" path="res://shaders/demos/switching_tiles/switching_tiles.gdshader" id="1_s03rx"]
 [ext_resource type="Script" uid="uid://cxfbcfihaysue" path="res://scripts/demos/switching_tiles/switching_tiles.gd" id="3_gmmhw"]
-[ext_resource type="Script" uid="uid://bb7ouwmptxgdo" path="res://floating_container.gd" id="3_nkggf"]
+[ext_resource type="Script" uid="uid://bb7ouwmptxgdo" path="res://addons/pronicula_nodes/floating_container.gd" id="3_nkggf"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_jyagr"]
 shader = ExtResource("1_s03rx")
@@ -12,50 +12,50 @@ shader_parameter/move_to = Vector2i(-1, -1)
 shader_parameter/move_from = Vector2i(-1, -1)
 shader_parameter/move_dir = 0
 
-[node name="Node2D" type="Node2D"]
+[node name="Node2D" type="Node2D" unique_id=668809399]
 
-[node name="FloatingContainer" type="Node2D" parent="."]
+[node name="FloatingContainer" type="Node2D" parent="." unique_id=2137651782]
 script = ExtResource("3_nkggf")
 metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
 
-[node name="ColorRect" type="ColorRect" parent="FloatingContainer"]
+[node name="ColorRect" type="ColorRect" parent="FloatingContainer" unique_id=35850652]
 material = SubResource("ShaderMaterial_jyagr")
 offset_right = 50.0
 offset_bottom = 50.0
 scale = Vector2(10, 10)
 script = ExtResource("3_gmmhw")
 
-[node name="UI" type="Panel" parent="FloatingContainer"]
+[node name="UI" type="Panel" parent="FloatingContainer" unique_id=1375960302]
 offset_left = 509.0
 offset_top = 9.0
 offset_right = 627.0
 offset_bottom = 157.0
 
-[node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI"]
+[node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI" unique_id=1425014683]
 layout_mode = 0
 offset_left = 5.0
 offset_top = 6.0
 offset_right = 112.0
 offset_bottom = 134.0
 
-[node name="SizeLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer"]
+[node name="SizeLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=1508644372]
 layout_mode = 2
 text = "Size"
 
-[node name="SizeInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer"]
+[node name="SizeInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=1173093990]
 layout_mode = 2
 min_value = 2.0
 value = 5.0
 metadata/_edit_use_anchors_ = true
 
-[node name="HSeparator" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer"]
+[node name="HSeparator" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=572257372]
 layout_mode = 2
 
-[node name="SpeedLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer"]
+[node name="SpeedLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=229353977]
 layout_mode = 2
 text = "Speed"
 
-[node name="SpeedInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer"]
+[node name="SpeedInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=1480452518]
 layout_mode = 2
 step = 0.1
 value = 0.5

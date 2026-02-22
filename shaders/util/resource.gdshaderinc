@@ -1,3 +1,35 @@
+// Masks b over a based on alpha with anti-aliasing.
+// alpha > ~0.0 => Overwrites a with b
+float mask_aa(float a, float b, float alpha)
+{
+	float aa = fwidth(alpha);
+	return mix(a, b, smoothstep(0.0, aa, alpha));
+}
+
+// Masks b over a based on alpha with anti-aliasing.
+// alpha > ~0.0 => Overwrites a with b
+vec2 mask_aa(vec2 a, vec2 b, float alpha)
+{
+	float aa = fwidth(alpha);
+	return mix(a, b, smoothstep(0.0, aa, alpha));
+}
+
+// Masks b over a based on alpha with anti-aliasing.
+// alpha > ~0.0 => Overwrites a with b
+vec3 mask_aa(vec3 a, vec3 b, float alpha)
+{
+	float aa = fwidth(alpha);
+	return mix(a, b, smoothstep(0.0, aa, alpha));
+}
+
+// Masks b over a based on alpha with anti-aliasing.
+// alpha > ~0.0 => Overwrites a with b
+vec4 mask_aa(vec4 a, vec4 b, float alpha)
+{
+	float aa = fwidth(alpha);
+	return mix(a, b, smoothstep(0.0, aa, alpha));
+}
+
 // Samples a given texture (usually padded to maintain pow2 dimensions)
 // as if only the non-padded regions (real_size) exist.
 vec4 padded_texture(sampler2D tex, vec2 uv, float real_size)

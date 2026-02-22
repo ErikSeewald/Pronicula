@@ -56,9 +56,7 @@ vec3 sample_polygon_square(vec2 uv, float sides, vec3 background, vec3 foregroun
 	vec2 q = length(p) * vec2(cos(polar_angle), abs(sin(polar_angle)));
 	float dist_to_edge = q.x - radius * cos(half_angle);
 	
-	// Blend with anti-aliasing
-	float aa = fwidth(dist_to_edge);
-	return mix(background, foreground, smoothstep(0.0, aa, -dist_to_edge));
+	return mask_aa(background, foreground, -dist_to_edge);
 }
 
 /// Samples the procedural square texture specified by the given class.
