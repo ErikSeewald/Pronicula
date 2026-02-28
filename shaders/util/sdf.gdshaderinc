@@ -25,3 +25,21 @@ float sd_oriented_box(vec2 p, vec2 a, vec2 b, float h)
 	q = abs(q) - vec2(l, h)*0.5;
 	return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
 }
+
+// Returns the union of the SDFs in the rows of the given vector.
+float sdf_union(vec2 sdfs)
+{
+	return max(sdfs.x, sdfs.y);
+}
+
+// Returns the union of the SDFs in the rows of the given vector.
+float sdf_union(vec3 sdfs)
+{
+	return max(sdfs.x, max(sdfs.y, sdfs.z));
+}
+
+// Returns the union of the SDFs in the rows of the given vector.
+float sdf_union(vec4 sdfs)
+{
+	return max(sdfs.x, max(max(sdfs.y, sdfs.z), sdfs.w));
+}

@@ -31,6 +31,16 @@ group_uniforms hamsters;
 const float HAMSTER_SIZE = 0.13;
 uniform uint hamster_count = 30;
 uniform float bobbing_speed = 50.0;
+uniform float wheel_desire: hint_range(0.0, 1.0) = 0.75; // Chance to choose a wheel as the next goal
+
+// Jitters the given coordinates with a jitter seed derived from
+// the jitter group they fall into.
+// As a result, all coordinates within the same group are jittered the same.
+vec2 jitter_grouped(vec2 coords)
+{
+	vec2 jitter_seed = floor(coords  / float(jitter_bounds));
+	return jitter(coords, jitter_seed, seed, jitter_intensity);
+}
 
 // Samples the procedural SDF wheel texture based on the given uv as well
 // as the rotated uv for the non-static parts. Uses the difference
@@ -74,27 +84,25 @@ vec4 sample_wheel(vec2 uv, vec2 rotated_uv, vec3 cur_col)
 	return vec4(color, alpha); // mask_aa is applied later
 }
 
-vec2 get_jittered_wheel_coords(vec2 coords)
-{
-	//float sin_jitter = 1.7 + sin(time) * 0.3;
-	vec2 jitter_seed = floor(coords  / float(jitter_bounds));
-	return jitter(coords, jitter_seed, seed, jitter_intensity);
-}
-
-// Draws wheels onto the current color at the given pre-jittered grid coordinates.
+// Draws wheels onto the current color at the given coordinate.
+// This coordinate is used to determine wether the fragment falls onto the UV bounds of a jittered
+// wheel. Should that be the case, sample_wheel() makes sure to mask the pre-drawn hamsters between
+// the various parts of the wheel correctly.
+// If the hamster drawing step determined that there are hamsters on the wheel at this fragment,
+// the given wheel_rotation determines how far they have rotated it and how it should therefore be drawn.
 vec3 draw_wheels(vec2 coords, vec3 cur_col, float wheel_rotation)
 {	
 	// Only draw wheel if the tile is the center of the jitter group
-	coords = get_jittered_wheel_coords(coords);
+	coords = jitter_grouped(coords);
 	ivec2 idx = ivec2(coords);
 	if (idx.x % jitter_bounds == jitter_center && idx.y % jitter_bounds == jitter_center)
 	{		
 		vec2 uv = fract(coords);
 		
-		// This one is used for the wheel rotation
+		// Main rotation induced by the hamsters
 		vec2 rotated_uv = rotate_around_center(uv, wheel_rotation);
 		
-		// But still give all of them a small constant rotation to make them look more random
+		// Still give all wheels a small global rotation to make them look more random
 		uv = rotate_around_center(uv, (hash_vec2_float(vec2(idx), seed) - 0.5) * 0.25);
 		
 		vec4 wheel = sample_wheel(uv, rotated_uv, cur_col);
@@ -104,32 +112,35 @@ vec3 draw_wheels(vec2 coords, vec3 cur_col, float wheel_rotation)
 	return cur_col;
 }
 
-// Samples the procedural SDF hamster texture based on the given UV.
-vec4 sample_hamster(vec2 uv, vec3 color_offset)
+// Samples the procedural SDF hamster texture based on the given position 
+// around the hamster center (0,0).
+// The given color_offset is used to add variety to the appearances of different hamsters.
+vec4 sample_hamster(vec2 pos, vec3 color_offset)
 {
-	// Origin already at hamster center
 	vec4 value = TRANSPARENT;
 	float alpha = 0.0;
 	vec3 hamster_col = HAMSTER_COL_BASE + color_offset;
 	
 	// EARS
+	float ear_size = HAMSTER_SIZE * 0.4;
 	vec2 ear_A_offset = vec2(0.6, 0.9) * HAMSTER_SIZE;
 	vec2 ear_B_offset = vec2(-0.6, 0.9) * HAMSTER_SIZE;
-	float ear_A = -sd_circle(uv + ear_A_offset, HAMSTER_SIZE * 0.4);
-	float ear_B = -sd_circle(uv + ear_B_offset, HAMSTER_SIZE * 0.4);
+	float ear_A = -sd_circle(pos + ear_A_offset, ear_size);
+	float ear_B = -sd_circle(pos + ear_B_offset, ear_size);
 	
-	alpha = max(alpha, max(ear_A, ear_B));
+	alpha = sdf_union(vec2(ear_A, ear_B));
 	value = mask_aa(value, vec4(hamster_col, 1.0), alpha);
 	
-	float inner_ear_A = -sd_circle(uv + ear_A_offset, HAMSTER_SIZE * 0.25);
-	float inner_ear_B = -sd_circle(uv + ear_B_offset, HAMSTER_SIZE * 0.25);
+	float inner_ear_size = HAMSTER_SIZE * 0.25;
+	float inner_ear_A = -sd_circle(pos + ear_A_offset, inner_ear_size);
+	float inner_ear_B = -sd_circle(pos + ear_B_offset, inner_ear_size);
 	
-	alpha = max(inner_ear_A, inner_ear_B);
+	alpha = sdf_union(vec2(inner_ear_A, inner_ear_B));
 	value = mask_aa(value, vec4(HAMSTER_SKIN_COL, 1.0), alpha);
 	
 	// BODY
-	float head = -sd_circle(uv, HAMSTER_SIZE);
-	float head_white = -sd_circle(uv + vec2(0.0, -0.5) * HAMSTER_SIZE, HAMSTER_SIZE * 0.7);
+	float head = -sd_circle(pos, HAMSTER_SIZE);
+	float head_white = -sd_circle(pos + vec2(0.0, -0.5) * HAMSTER_SIZE, HAMSTER_SIZE * 0.7);
 	
 	alpha = head;
 	value = mask_aa(value, vec4(hamster_col, 1.0), alpha);
@@ -138,20 +149,22 @@ vec4 sample_hamster(vec2 uv, vec3 color_offset)
 	value = mask_aa(value, vec4(1.0), alpha);
 	
 	// FACE
-	float eye_A = -sd_circle(uv + vec2(0.4, 0.2) * HAMSTER_SIZE, HAMSTER_SIZE * 0.22);
-	float eye_B = -sd_circle(uv + vec2(-0.4, 0.2) * HAMSTER_SIZE, HAMSTER_SIZE * 0.22);
-	float mouth = -sd_circle(uv + vec2(0.0, -0.5) * HAMSTER_SIZE, HAMSTER_SIZE * 0.1);
+	float eye_size = HAMSTER_SIZE * 0.22;
+	float eye_A = -sd_circle(pos + vec2(0.4, 0.2) * HAMSTER_SIZE, eye_size);
+	float eye_B = -sd_circle(pos + vec2(-0.4, 0.2) * HAMSTER_SIZE, eye_size);
+	float mouth = -sd_circle(pos + vec2(0.0, -0.5) * HAMSTER_SIZE, HAMSTER_SIZE * 0.1);
 	
-	alpha = max(mouth, max(eye_A, eye_B));
+	alpha = sdf_union(vec3(mouth, eye_A, eye_B));
 	value = mask_aa(value, vec4(vec3(0.0), 1.0), alpha);
 	
-	float eye_sparkle_A = -sd_circle(uv + vec2(0.32, 0.28) * HAMSTER_SIZE, HAMSTER_SIZE * 0.075);
-	float eye_sparkle_B = -sd_circle(uv + vec2(-0.32, 0.28) * HAMSTER_SIZE, HAMSTER_SIZE * 0.075);
+	float sparkle_size = HAMSTER_SIZE * 0.075;
+	float eye_sparkle_A = -sd_circle(pos + vec2(0.32, 0.28) * HAMSTER_SIZE, sparkle_size);
+	float eye_sparkle_B = -sd_circle(pos + vec2(-0.32, 0.28) * HAMSTER_SIZE, sparkle_size);
 	
-	alpha = max(eye_sparkle_A, eye_sparkle_B);
+	alpha = sdf_union(vec2(eye_sparkle_A, eye_sparkle_B));
 	value = mask_aa(value, vec4(1.0), alpha);
 	
-	float nose = -sd_circle(uv, HAMSTER_SIZE * 0.25);
+	float nose = -sd_circle(pos, HAMSTER_SIZE * 0.25);
 	
 	alpha = nose;
 	value = mask_aa(value, vec4(HAMSTER_NOSE_COL, 1.0), alpha);
@@ -159,34 +172,28 @@ vec4 sample_hamster(vec2 uv, vec3 color_offset)
 	return value;
 }
 
-// Third value says wether or not the target was chosen as a wheel
-vec3 get_goal(vec2 cur_hamster, float t)
+// Chooses a pseudo-random wandering goal based on the given hamster position
+// and the point in time t.
+// Has a chance of choosing a specific wheel instead of a random coordinate
+// as the goal.
+// Returns: vec3(goal.x, goal.y, is_wheel)
+vec3 get_goal(vec2 hamster_pos, float t)
 {
-	t = mod(t, 100000.0);
-	t = t == 0.0 ? 0.1 : t;
-	
-	vec2 hash = hash_vec2_vec2(cur_hamster * t, seed) * size;
+	t = t == 0.0 ? 0.1 : t; // If t were allowed to be 0, all hamsters would start with the same goal	
+	vec2 hash = hash_vec2_vec2(hamster_pos * t, seed) * size;
 
-
-	// 75% chance for the goal to be a wheel
-	if (fract(hash.x) < 0.75)
+	if (fract(hash.x) < wheel_desire)
 	{
+		// Inverse jitter_grouped() to get the coordinate of the wheel in the jitter group
+		// that the hash falls into
 		vec2 jitter_seed = floor(hash / float(jitter_bounds));
-		vec2 goal = floor(hash / float(jitter_bounds)) * float(jitter_bounds) + vec2(1.0);
-		goal = jitter(goal, jitter_seed, seed, -jitter_intensity); // Inverse jitter
+		vec2 center = jitter_seed * float(jitter_bounds) + vec2(1.0);
+		vec2 goal = jitter(center, jitter_seed, seed, -jitter_intensity); // Inverse jitter
 		return vec3(goal + wheel_center_to_bottom, 1.0);
 	}
 	
 	return vec3(hash, 0.0);
 }
-
-// Speeds up until 0.25 then slows down again
-float get_wheel_rotation(float t, vec2 idx)
-{
-	float individualizer = floor((hash_vec2_float(idx, seed) + 0.1) * 10.0); // Whole number to ensure multiple of 2PI
-	return 1.0 / (1.0 + exp(-(t*20.0 - 5.0))) * individualizer * 6.325; // 6.325to ensure integral from 0.0 to 0.5 is 2PI
-}
-
 
 float walkNoise(float t)
 {
@@ -197,6 +204,12 @@ float walkNoise(float t)
 	return mix(a, b, smoothstep(0.0, 1.0, t_fract));
 }
 
+// Speeds up until 0.25 then slows down again
+float get_wheel_rotation(float t, vec2 idx)
+{
+	float individualizer = floor((hash_vec2_float(idx, seed) + 0.1) * 10.0); // Whole number to ensure multiple of 2PI
+	return 1.0 / (1.0 + exp(-(t*20.0 - 5.0))) * individualizer * 6.325; // 6.325to ensure integral from 0.0 to 0.5 is 2PI
+}
 
 // Draws hamsters onto the current color at the given grid coordinates.
 vec3 draw_hamsters(vec2 coords, vec3 cur_col, inout float wheel_rotation)
@@ -226,7 +239,7 @@ vec3 draw_hamsters(vec2 coords, vec3 cur_col, inout float wheel_rotation)
 
 		bool b = false;
 
-		vec2 jit = get_jittered_wheel_coords(last_goal.xy);
+		vec2 jit = jitter_grouped(last_goal.xy);
 		ivec2 wheel_idx = ivec2(jit);
 		
 		float cur_wheel_rotation;
