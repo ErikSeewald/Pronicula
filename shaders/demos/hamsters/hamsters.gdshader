@@ -28,7 +28,11 @@ const float WHEEL_OUTER_RADIUS = 0.45;
 const vec2 wheel_center_to_bottom = vec2(0.5, 0.5 + WHEEL_INNER_RADIUS);
 
 group_uniforms hamsters;
+const float HAMSTER_LEAVES_WHEEL_T = 0.5; // What fraction of their walk interval do hamsters spend on the wheel
 const float HAMSTER_SIZE = 0.13;
+const int HAMSTER_CYCLES_COUNT = 7; // Number of possible cycle lengths for a hamster (walk from one goal to the next)
+const float MAX_HAMSTER_CYCLE = 60.0; // The other cycles are divisors => Know time when all hamsters are starting new cycle
+const float HAMSTER_CYCLE_LENGTHS[HAMSTER_CYCLES_COUNT] = {6.0, 10.0, 12.0, 15.0, 20.0, 30.0, 60.0};
 uniform uint hamster_count = 30;
 uniform float bobbing_speed = 50.0;
 uniform float wheel_desire: hint_range(0.0, 1.0) = 0.75; // Chance to choose a wheel as the next goal
@@ -78,7 +82,7 @@ vec4 sample_wheel(vec2 uv, vec2 rotated_uv, vec3 cur_col)
 	
 	// Hamster in front of legs, axle, bars but behind main wheel
 	float hamster_mask = mask_aa(length(BACKGROUND_COL - cur_col), 0.0, is_main_wheel);
-	alpha = mask_aa(alpha, 0.0, hamster_mask);
+	alpha = mask_aa(alpha, 0.0, round(hamster_mask));
 
 	vec3 color = mask_aa(WHEEL_COL_A, WHEEL_COL_B, max(rotated_uv.x, 0.0) * is_main_wheel);
 	return vec4(color, alpha); // mask_aa is applied later
@@ -195,103 +199,110 @@ vec3 get_goal(vec2 hamster_pos, float t)
 	return vec3(hash, 0.0);
 }
 
-float walkNoise(float t)
+// Returns a noise offset for the hamster's walk.
+// X and Y coordinate should use different noise seeds for more organic noise.
+float walk_noise(float noise_seed)
 {
+	float t = time * hash(noise_seed, seed);
 	float t_int = floor(t);
 	float t_fract = fract(t);
-	float a = hash_seedless(t_int);
-	float b = hash_seedless(t_int+1.0);
+	float a = hash(t_int, seed);
+	float b = hash(t_int+1.0, seed);
 	return mix(a, b, smoothstep(0.0, 1.0, t_fract));
 }
 
-// Speeds up until 0.25 then slows down again
-float get_wheel_rotation(float t, vec2 idx)
+// Returns how far the wheel of the given idx is rotated by a single hamster for a time t.
+// Uses a function that speeds up from 0.0 and slows down until HAMSTER_LEAVES_WHEEL_T in a way that ensures 
+// t=HAMSTER_LEAVES_WHEEL_T returns a multiple of 2PI so that the wheel is back in its default position when the hamster
+// leaves it.
+float get_wheel_rotation(float t, vec2 wheel_idx)
 {
-	float individualizer = floor((hash_vec2_float(idx, seed) + 0.1) * 10.0); // Whole number to ensure multiple of 2PI
-	return 1.0 / (1.0 + exp(-(t*20.0 - 5.0))) * individualizer * 6.325; // 6.325to ensure integral from 0.0 to 0.5 is 2PI
+	float f = 1.0 / (1.0 + exp(-(t*30.0 - 7.5))) * 6.29; // 6.29 to ensure HAMSTER_LEAVES_WHEEL_T returns 2PI
+	float individualizer = floor((hash_vec2_float(wheel_idx, seed) + 0.1) * 10.0); // Whole number to ensure multiple of 2PI
+	return f * individualizer; // This is why 0.1 is always added to the individualizer hash. Do not want wheels to get stuck.
+}
+
+// Returns the current cycle length of the hamster defined by the given idx.
+// The point of having different cycle lengths is so that it does not look like all
+// hamsters are starting to run or getting off their wheels at the same time.
+float get_cycle_length(float hamster_idx)
+{
+	// Hamsters keep their cycle lengths for one MAX_HAMSTER_CYCLE. This is because,
+	// to generate a consistent hash that indexes into the cycle lengths array, a specific interval would need
+	// to be chosen. By the end of this interval, all hamsters would need to have completed their current cycle
+	// to avoid snapping to new positions. Since all cycle lengths divide MAX_HAMSTER_CYCLE, it fits that role.
+	float last_switch = floor(time / MAX_HAMSTER_CYCLE);
+	return HAMSTER_CYCLE_LENGTHS[int(hash(hamster_idx + last_switch, seed) * float(HAMSTER_CYCLES_COUNT))];
 }
 
 // Draws hamsters onto the current color at the given grid coordinates.
 vec3 draw_hamsters(vec2 coords, vec3 cur_col, inout float wheel_rotation)
 {
-	const int cycles = 7;
-	const float full_cycle = 60.0;
-	const float cycle_lengths[cycles] = {/*1.0, 2.0, 3.0, 4.0, 5.0,*/ 6.0, 10.0, 12.0, 15.0, 20.0, 30.0, 60.0};
-
 	for (uint i = 0u; i < hamster_count; i++)
 	{
 		float idx = float(i);
-
-		// Every 60 t, the cycle lengths of all of them change
-		// This is because 60 has 12 divisors, allowing for these cycle lengths
-		float last_switch = floor(time / full_cycle);
-		float tt = cycle_lengths[int(hash_vec2_float(vec2(idx + last_switch), seed) * 100.0) % cycles];
-		float phase = fract(time / tt);
-		float t0 = floor(time / tt) * tt;
-		float t1 = t0 + tt;
+		float cycle_length = get_cycle_length(idx);
+		float phase = fract(time / cycle_length);
+		float t0 = floor(time / cycle_length) * cycle_length;
+		float t1 = t0 + cycle_length;
 		
-		float st = time + 10.0 * hash_seedless(idx);
-		vec2 shift = vec2(walkNoise(st), walkNoise(st+17.0)) * (1.0 - abs(0.5 - phase) * 2.0) * 10.0; // Scale intensity so that at beginning and end it is at goal pos
+		vec2 shift = vec2(walk_noise(idx), walk_noise(idx+17.0)) * (1.0 - abs(0.5 - phase) * 2.0) * 10.0; // Scale intensity so that at beginning and end it is at goal pos
 		vec2 cur_hamster = hash_vec2_vec2(vec2(idx), seed);
 		vec3 last_goal = get_goal(cur_hamster, t0);
 		vec3 cur_goal = get_goal(cur_hamster, t1);
 		cur_hamster = last_goal.xy - (last_goal.xy - cur_goal.xy) * phase + shift;
 
-		bool b = false;
-
-		vec2 jit = jitter_grouped(last_goal.xy);
-		ivec2 wheel_idx = ivec2(jit);
+		bool on_wheel = false;
+		float cur_wheel_rotation = 0.0;
 		
-		float cur_wheel_rotation;
+		vec2 bobbing_offset = vec2(0.0, sin(time * bobbing_speed * 20.0/cycle_length + 1.0/(idx+1.0)) * HAMSTER_SIZE * 0.1);
 		
-		vec2 bobbing_offset = vec2(0.0, sin(time * bobbing_speed * 20.0/tt + 1.0/(idx+1.0)) * HAMSTER_SIZE * 0.1);
-				// Only goals that were explicitly forced to be the wheel should be counted, otherwise position assumptions may be off
+		// Only goals that were explicitly forced to be the wheel should be counted, otherwise position assumptions may be off
 		if (last_goal.z == 1.0)
 		{
 			vec2 floor_offset = -vec2(0.0, 0.7) * HAMSTER_SIZE;
 			vec2 center = last_goal.xy - wheel_center_to_bottom;
 			if (phase < 0.5) 
 			{
-				cur_hamster = last_goal.xy; b = true;
-	
-				
-				float t = (time - t0) / tt; // Start rotation at bottom of the wheel
+				on_wheel = true;
+				cur_hamster = last_goal.xy; 
+				float t = (time - t0) / cycle_length; // Start rotation at bottom of the wheel
+				vec2 jit = jitter_grouped(last_goal.xy);
+				ivec2 wheel_idx = ivec2(jit);
 				cur_wheel_rotation = get_wheel_rotation(t, vec2(wheel_idx));
 				
-				bobbing_offset = vec2(0.0, sin(time * cur_wheel_rotation * bobbing_speed * 0.005) * HAMSTER_SIZE * 0.2);
-				
+				bobbing_offset = vec2(0.0, sin(time * cur_wheel_rotation * bobbing_speed * 0.001) * HAMSTER_SIZE * 0.2);
 				
 				if (ivec2(coords/float(jitter_bounds)) == ivec2(last_goal.xy / float(jitter_bounds)))
 				{
 					wheel_rotation += cur_wheel_rotation;	
 				}
 				
-				if (round(hash_seedless(idx)) * phase > 0.25)
+				if (round(hash(idx, seed)) * phase > 0.25)
 				{
 					// These ones tumble around instead
-					cur_hamster = rotate_around_center(cur_hamster - center + floor_offset, - max(wheel_rotation, cur_wheel_rotation)) + center;
+					cur_hamster = rotate_around_center(cur_hamster - center + floor_offset, - max(wheel_rotation, cur_wheel_rotation) * phase) + center;
 				}
 				else
 				{
-					cur_hamster = rotate_around_center(cur_hamster - center + floor_offset + bobbing_offset, sin(time * cur_wheel_rotation * 0.001 + 5.0/(idx+1.0))) + center;
+					cur_hamster = rotate_around_center(cur_hamster - center + floor_offset + bobbing_offset, sin(time * cur_wheel_rotation * 0.001 * 5.0/(idx+1.0))) + center;
 				}
 			}
 			else 
 			{
-
 				cur_hamster = last_goal.xy - ((last_goal.xy - cur_goal.xy) + shift) * (phase-0.5)*2.0 ;
 			}
 		}
 
-		if (!b) { cur_hamster += bobbing_offset; }
+		if (!on_wheel) { cur_hamster += bobbing_offset; }
 		vec2 dif = coords - cur_hamster;
 		float d = length(dif);
 		if (d < HAMSTER_SIZE * 1.5)
 		{
-			vec3 hamster_col_offset = vec3(0.7, 0.7, 0.0) * (hash_seedless(idx) - 0.5);
+			vec3 hamster_col_offset = vec3(0.7, 0.7, 0.0) * (hash(idx, seed) - 0.5);
 
 			vec2 hamster_centered = coords - cur_hamster;
-			if (b) { hamster_centered = rotate_around_origin(hamster_centered, -sin(time * cur_wheel_rotation * 0.001) * 0.5); }
+			if (on_wheel) { hamster_centered = rotate_around_origin(hamster_centered, -sin(time * cur_wheel_rotation * 0.001) * 0.5); }
 			vec4 hamster = sample_hamster(hamster_centered, hamster_col_offset);
 			cur_col = mix(cur_col, hamster.rgb, hamster.a);
 			// Do not return early, overlap is possible
