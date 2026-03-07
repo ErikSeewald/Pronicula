@@ -6,12 +6,14 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_58ydm"]
 shader = ExtResource("2_dters")
-shader_parameter/time = 866.39
+shader_parameter/time = 840.38
 shader_parameter/size = 12.0
 shader_parameter/seed = 1
 shader_parameter/jitter_intensity = 2.0
 shader_parameter/hamster_count = 30
-shader_parameter/bobbing_speed = 50.0
+shader_parameter/bobbing_speed = 20.0
+shader_parameter/bobbing_strength = 0.1
+shader_parameter/walk_noisiness = 10.0
 shader_parameter/wheel_desire = 0.75
 
 [node name="Hamsters" type="Node2D" unique_id=699650666]
