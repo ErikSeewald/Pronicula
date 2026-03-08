@@ -231,7 +231,7 @@ float get_cycle_length(float hamster_idx)
 	return HAMSTER_CYCLE_LENGTHS[int(hash(hamster_idx + last_switch, seed) * float(HAMSTER_CYCLES_COUNT))];
 }
 
-// Returns a noise offset for the hamster's walk.
+// Returns a smoothed noise offset for the hamster's walk.
 // X and Y coordinate should use different noise seeds for more organic noise.
 float walk_noise(float noise_seed)
 {
@@ -247,7 +247,7 @@ float walk_noise(float noise_seed)
 // based on the given cycle phase.
 vec2 get_walk_shift(float hamster_idx, float phase)
 {
-	vec2 noise = vec2(walk_noise(hamster_idx), walk_noise(hamster_idx+17.0));
+	vec2 noise = vec2(walk_noise(hamster_idx) - 0.5, walk_noise(hamster_idx+17.0) - 0.5);
 	float phase_scale = (1.0 - abs(0.5 - phase) * 2.0); // Scale intensity so that at beginning and end it is at goal pos
 	return noise * walk_noisiness * phase_scale; 
 }

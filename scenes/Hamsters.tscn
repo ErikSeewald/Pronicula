@@ -6,7 +6,7 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_58ydm"]
 shader = ExtResource("2_dters")
-shader_parameter/time = 840.38
+shader_parameter/time = 1210.435
 shader_parameter/size = 12.0
 shader_parameter/seed = 1
 shader_parameter/jitter_intensity = 2.0
@@ -33,13 +33,121 @@ metadata/_edit_use_anchors_ = true
 
 [node name="UI" type="Panel" parent="FloatingContainer" unique_id=962166169]
 offset_left = 509.0
-offset_top = 9.0
-offset_right = 627.0
-offset_bottom = 157.0
+offset_top = 3.0
+offset_right = 680.0
+offset_bottom = 498.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI" unique_id=2071290171]
 layout_mode = 0
 offset_left = 5.0
 offset_top = 6.0
-offset_right = 112.0
-offset_bottom = 134.0
+offset_right = 166.0
+offset_bottom = 259.0
+
+[node name="SizeLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=913660913]
+layout_mode = 2
+text = "Size"
+
+[node name="SizeInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=1199267931]
+layout_mode = 2
+max_value = 10000.0
+step = 0.01
+value = 12.0
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="SeedLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=954787450]
+layout_mode = 2
+text = "Seed"
+
+[node name="SeedInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=415042184]
+layout_mode = 2
+max_value = 100000.0
+value = 1.0
+rounded = true
+allow_greater = true
+allow_lesser = true
+metadata/_edit_use_anchors_ = true
+
+[node name="HSeparator2" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=497027987]
+layout_mode = 2
+
+[node name="JitterLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=445768458]
+layout_mode = 2
+text = "Wheel jitter"
+
+[node name="JitterSlider" type="HSlider" parent="FloatingContainer/UI/VBoxContainer" unique_id=990510998]
+layout_mode = 2
+max_value = 2.0
+step = 0.01
+value = 2.0
+
+[node name="HSeparator3" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=842050695]
+layout_mode = 2
+
+[node name="HamsterCountLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=1436474552]
+layout_mode = 2
+text = "Hamster count"
+
+[node name="HamsterCountInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=2096019301]
+layout_mode = 2
+max_value = 1000.0
+value = 30.0
+rounded = true
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="BobbingSpeedLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=344550109]
+layout_mode = 2
+text = "Bobbing speed"
+
+[node name="BobbingSpeedInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=46332880]
+layout_mode = 2
+max_value = 1000.0
+step = 0.01
+value = 20.0
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="BobbingStrengthLabel2" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=764681071]
+layout_mode = 2
+text = "Bobbing strength"
+
+[node name="BobbingStrengthInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=1302358907]
+layout_mode = 2
+max_value = 1000.0
+step = 0.001
+value = 0.1
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="WalkNoisinessLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=303464309]
+layout_mode = 2
+text = "Walk noisiness"
+
+[node name="WalkNoisinessInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=918005813]
+layout_mode = 2
+max_value = 1000.0
+step = 0.01
+value = 10.0
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="WheelDesireLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=59400847]
+layout_mode = 2
+text = "Wheel desire"
+
+[node name="WheelDesireSlider" type="HSlider" parent="FloatingContainer/UI/VBoxContainer" unique_id=1777126843]
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 0.75
+
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SizeInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["size"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SeedInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["seed"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/JitterSlider" to="FloatingContainer/ColorRect" method="on_change" binds= ["jitter_intensity"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/HamsterCountInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["hamster_count"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/BobbingSpeedInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["bobbing_speed"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/BobbingStrengthInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["bobbing_strength"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/WalkNoisinessInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["walk_noisiness"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/WheelDesireSlider" to="FloatingContainer/ColorRect" method="on_change" binds= ["wheel_desire"]]

@@ -8,3 +8,6 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	time += delta
 	material.set_shader_parameter("time", time)
+	
+func on_change(param_value, param_name):
+	material.set_shader_parameter(param_name, param_value)
