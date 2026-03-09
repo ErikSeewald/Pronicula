@@ -370,7 +370,7 @@ vec3 draw_hamsters(vec2 coords, vec3 cur_col, inout float wheel_rotation)
 		{
 			if (h.on_wheel) 
 			{ 
-				float local_rotation = -sin(h.phase * wheel_rotation) * 0.5;
+				float local_rotation = -sin(h.phase * wheel_rotation) * 0.3;
 				hamster_centered = rotate_around_origin(hamster_centered, local_rotation); 
 			}
 			vec3 hamster_col_offset = vec3(0.7, 0.7, 0.0) * (hash(h.idx, seed) - 0.5);
