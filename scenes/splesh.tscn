@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://ejvfju2txj38"]
+
+[ext_resource type="Script" uid="uid://bb7ouwmptxgdo" path="res://addons/pronicula_nodes/floating_container.gd" id="1_ejpxv"]
+[ext_resource type="Script" uid="uid://cin8bmbiryd8f" path="res://scripts/demos/splesh/splesh_instance.gd" id="2_4b0ke"]
+[ext_resource type="Shader" uid="uid://c8nexs1a6xert" path="res://shaders/demos/splesh/splesh_demo.gdshader" id="2_ejpxv"]
+[ext_resource type="ArrayMesh" path="res://assets/splesh_100.tres" id="3_l0bl2"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4b0ke"]
+shader = ExtResource("2_ejpxv")
+shader_parameter/time = 0.0
+shader_parameter/num_quads = 100
+
+[node name="Node2D" type="Node2D" unique_id=643148433]
+
+[node name="FloatingContainer" type="Node2D" parent="." unique_id=914339793]
+script = ExtResource("1_ejpxv")
+metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
+
+[node name="SpleshInstance" type="MeshInstance2D" parent="FloatingContainer" unique_id=1589313523]
+material = SubResource("ShaderMaterial_4b0ke")
+scale = Vector2(15, 15)
+mesh = ExtResource("3_l0bl2")
+script = ExtResource("2_4b0ke")
+
+[node name="UI" type="Panel" parent="FloatingContainer" unique_id=2050915781]
+offset_left = 509.0
+offset_top = 3.0
+offset_right = 765.0
+offset_bottom = 498.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI" unique_id=451353114]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 6.0
+offset_right = 249.0
+offset_bottom = 259.0
+
+[node name="TimeLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=1668254923]
+layout_mode = 2
+text = "Time"
+
+[node name="TimeSlider" type="HSlider" parent="FloatingContainer/UI/VBoxContainer" unique_id=2141434023]
+layout_mode = 2
+max_value = 30.0
+step = 0.01
+
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/TimeSlider" to="FloatingContainer/SpleshInstance" method="set_time"]
