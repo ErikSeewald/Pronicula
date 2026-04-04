@@ -58,6 +58,10 @@ theme_override_constants/separation = 10
 layout_mode = 2
 text = "Hamsters"
 
+[node name="TrainsButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/DemoButtons" unique_id=1067390067]
+layout_mode = 2
+text = "Trains"
+
 [node name="SpleshButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/DemoButtons" unique_id=881057187]
 layout_mode = 2
 text = "Splesh"
@@ -68,5 +72,6 @@ text = "Switching Tiles
 "
 
 [connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/DemoButtons/HamstersButton" to="." method="launch_hamsters"]
+[connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/DemoButtons/TrainsButton" to="." method="launch_trains"]
 [connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/DemoButtons/SpleshButton" to="." method="launch_splesh_demo"]
 [connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/DemoButtons/SwitchingTilesButton" to="." method="launch_switching_tiles"]

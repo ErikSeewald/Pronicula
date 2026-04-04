@@ -50,3 +50,15 @@ vec2 jitter(vec2 to_jitter, vec2 seed_vec, int base_seed, float intensity)
 	vec2 offset = hash_vec2_vec2(seed_vec, base_seed) - middle_shift;
 	return to_jitter + offset * intensity;
 }
+
+// Jitters the given coordinates with a jitter seed derived from
+// the jitter group they fall into.
+// - jitter_bounds defines the size of a single group
+// - jitter_intensity affects how strongly the coordinates are jittered within the group
+// - base_seed is used as the basis of rng and combined with the jitter seed
+// As a result, all coordinates within the same group are jittered the same.
+vec2 jitter_grouped(vec2 coords, float jitter_bounds, float jitter_intensity, int base_seed)
+{
+	vec2 jitter_seed = floor(coords  / float(jitter_bounds));
+	return jitter(coords, jitter_seed, base_seed, jitter_intensity);
+}

@@ -55,16 +55,6 @@ struct hamster
 	vec3 cur_goal;
 };
 
-// Jitters the given coordinates with a jitter seed derived from
-// the jitter group they fall into.
-// As a result, all coordinates within the same group are jittered the same.
-vec2 jitter_grouped(vec2 coords)
-{
-	vec2 jitter_seed = floor(coords  / float(jitter_bounds));
-	return jitter(coords, jitter_seed, seed, jitter_intensity);
-}
-
-
 // Samples the procedural SDF wheel texture based on the given uv as well
 // as the rotated uv for the non-static parts. Uses the difference
 // between cur_col and BACKGROUND_COL to mask out the hamsters that were
@@ -116,7 +106,7 @@ vec4 sample_wheel(vec2 uv, vec2 rotated_uv, vec3 cur_col)
 vec3 draw_wheels(vec2 coords, vec3 cur_col, float wheel_rotation)
 {	
 	// Only draw wheel if the tile is the center of the jitter group
-	coords = jitter_grouped(coords);
+	coords = jitter_grouped(coords, float(jitter_bounds), jitter_intensity, seed);
 	ivec2 idx = ivec2(coords);
 	if (idx.x % jitter_bounds == jitter_center && idx.y % jitter_bounds == jitter_center)
 	{		
@@ -269,7 +259,7 @@ float get_wheel_rotation(float t, vec2 wheel_idx)
 void animate_hamster_on_wheel(inout hamster h, float cumulative_wheel_rotation)
 {
 	h.coords = h.last_goal.xy; // Snap to the wheel
-	ivec2 wheel_idx = ivec2(jitter_grouped(h.coords));
+	ivec2 wheel_idx = ivec2(jitter_grouped(h.coords, float(jitter_bounds), jitter_intensity, seed));
 	h.wheel_rotation = get_wheel_rotation(h.phase, vec2(wheel_idx));
 	float rotation = cumulative_wheel_rotation + h.wheel_rotation; // Real accumulation done in draw_hamsters()
 	

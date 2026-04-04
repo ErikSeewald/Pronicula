@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://ke2eo5tc8fr4"]
+
+[ext_resource type="Script" uid="uid://bb7ouwmptxgdo" path="res://addons/pronicula_nodes/floating_container.gd" id="1_smfhp"]
+[ext_resource type="Shader" uid="uid://dkmsm567oqw1y" path="res://shaders/demos/trains/trains_background.gdshader" id="2_2rpg6"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_smfhp"]
+shader = ExtResource("2_2rpg6")
+shader_parameter/time = 0.0
+shader_parameter/size = 100.0
+shader_parameter/seed = 1
+shader_parameter/background_color = Color(0.45, 0.4, 0.8, 1)
+shader_parameter/tracks_color = Color(0.1, 0.1, 0.2, 1)
+shader_parameter/jitter_intensity = 6.0
+shader_parameter/show_jitter = false
+
+[node name="Trains" type="Node2D" unique_id=1225401729]
+
+[node name="FloatingContainer" type="Node2D" parent="." unique_id=100909572]
+script = ExtResource("1_smfhp")
+metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
+
+[node name="ColorRect" type="ColorRect" parent="FloatingContainer" unique_id=142836184]
+material = SubResource("ShaderMaterial_smfhp")
+offset_right = 50.0
+offset_bottom = 50.0
+scale = Vector2(10, 10)
+metadata/_edit_use_anchors_ = true
+
+[node name="UI" type="Panel" parent="FloatingContainer" unique_id=644495612]
+offset_left = 509.0
+offset_top = 3.0
+offset_right = 680.0
+offset_bottom = 498.0
+metadata/_edit_use_anchors_ = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI" unique_id=617559644]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 6.0
+offset_right = 166.0
+offset_bottom = 259.0
+metadata/_edit_use_anchors_ = true
