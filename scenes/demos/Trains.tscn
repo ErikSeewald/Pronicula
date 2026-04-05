@@ -10,6 +10,7 @@ shader_parameter/size = 100.0
 shader_parameter/seed = 1
 shader_parameter/background_color = Color(0.45, 0.4, 0.8, 1)
 shader_parameter/tracks_color = Color(0.1, 0.1, 0.2, 1)
+shader_parameter/tracks_thickness = 0.3
 shader_parameter/jitter_intensity = 6.0
 shader_parameter/show_jitter = false
 
