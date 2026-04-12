@@ -11,8 +11,9 @@ shader_parameter/seed = 1
 shader_parameter/background_color = Color(0.45, 0.4, 0.8, 1)
 shader_parameter/tracks_color = Color(0.1, 0.1, 0.2, 1)
 shader_parameter/tracks_thickness = 0.3
-shader_parameter/jitter_intensity = 6.0
+shader_parameter/jitter_intensity = 0.0
 shader_parameter/show_jitter = false
+shader_parameter/bezier_offset = 3.0
 
 [node name="Trains" type="Node2D" unique_id=1225401729]
 

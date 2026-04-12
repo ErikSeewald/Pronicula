@@ -94,23 +94,69 @@ ivec2 get_from_circuit(ivec2 current, int circuit_num, bool get_next)
 	return get_next ? circuit_next[index] : circuit_prev[index];
 }
 
-// Draws tracks between the joints at the center of jitter-groups based on the given fragment
-// coordinates and masks them on top of the given current color.
-vec3 draw_tracks(vec2 coords, vec3 cur_col)
-{	
-	// Jitter-group
-	float jt_bounds_f = float(jitter_bounds); // I just do not want to keep doing "float(jitter_bounds)"
-	vec2 jt_group_id = floor(coords / jt_bounds_f);
-	vec2 coords_in_jt_group = mod(coords, jt_bounds_f);
+uniform float bezier_offset = 3.0;
+float fixed_bezier(vec2 coords, vec2 a, vec2 b, bool is_right)
+{
+	float offset = is_right ? bezier_offset : -bezier_offset;
 	
-	// Joint
-	vec2 jt_center_vec2 = vec2(float(jitter_center));
-	vec2 joint_pos_pre_jitter = (jt_group_id * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-	vec2 joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
-	vec2 p0 = mod(joint_pos, jt_bounds_f);
+	vec2 middle = 0.5 * (a + b);
+	vec2 dir = normalize(a - b);
+	vec2 perpendicular = vec2(-dir.y, dir.x);
+	vec2 control = middle + perpendicular * offset;
 	
-	float alpha;
+	float q = sd_bezier(coords, a, control, b);
+	return q < tracks_thickness * 0.5 ? 1.0 : 0.0;
+}
 
+float sd_circuit(vec2 coords, vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec2 coords_in_jt_group, vec2 p0, out vec2[2] circuit_neighbors)
+{
+	float alpha = 0.0;
+	
+	float jt_bounds_f = float(jitter_bounds);
+	vec2 jt_center_vec2 = vec2(float(jitter_center));
+	
+	int circuits_bounds = 3;
+	ivec2 circuit_id = ivec2(coords / float(circuits_bounds * jitter_bounds));
+	ivec2 circuit_idx = ivec2(mod(jt_group_id, float(circuits_bounds)));
+	
+	int circuit_num = int(hash_vec2_float(vec2(circuit_id), seed) * 10.0) % num_circuits;
+	
+	ivec2 next = get_from_circuit(circuit_idx, circuit_num, CIRCUIT_NEXT);
+	if (next != ivec2(-1))
+	{
+		next += circuit_id * circuits_bounds;
+		joint_pos_pre_jitter = (vec2(next) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
+		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
+		vec2 p_next = joint_pos - jt_group_id * jt_bounds_f;
+		
+		circuit_neighbors[0] = p_next;
+		
+		alpha = -sd_oriented_box(coords_in_jt_group, p0, p_next, tracks_thickness);
+	}
+	
+	// PREV
+	ivec2 prev = get_from_circuit(circuit_idx, circuit_num, CIRCUIT_PREV);
+	if (prev != ivec2(-1))
+	{
+		prev += circuit_id * circuits_bounds;
+		joint_pos_pre_jitter = (vec2(prev) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
+		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
+		vec2 p_prev = joint_pos - jt_group_id * jt_bounds_f;
+		
+		circuit_neighbors[1] = p_prev;
+		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_prev, tracks_thickness)));	
+	}
+	
+	return alpha;
+}
+
+float sd_bridge(vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec2 coords_in_jt_group, vec2 p0, in vec2[2] circuit_neighbors)
+{
+	float alpha = 0.0;
+	
+	float jt_bounds_f = float(jitter_bounds);
+	vec2 jt_center_vec2 = vec2(float(jitter_center));
+	
 	// IN
 	vec2[num_neighbors] in_offsets;
 	int inputs_found = 0;
@@ -130,7 +176,10 @@ vec3 draw_tracks(vec2 coords, vec3 cur_col)
 		joint_pos_pre_jitter = ((jt_group_id + in_offsets[i]) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
 		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
 		vec2 p_left = joint_pos - jt_group_id * jt_bounds_f;
-		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_left, tracks_thickness)));	
+		
+		if (p_left == circuit_neighbors[0] || p_left == circuit_neighbors[1] ) { continue; }
+		//alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_left, tracks_thickness)));	
+		alpha = sdf_union(vec2(alpha, fixed_bezier(coords_in_jt_group, p0, p_left, false)));
 	}
 	
 	// OUT
@@ -141,37 +190,36 @@ vec3 draw_tracks(vec2 coords, vec3 cur_col)
 	joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
 	vec2 p_right = joint_pos - jt_group_id * jt_bounds_f;
 	
-	alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_right, tracks_thickness)));
+	if (p_right != circuit_neighbors[0] && p_right != circuit_neighbors[1] )
+	{
+		//alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_right, tracks_thickness)));
+		alpha = sdf_union(vec2(alpha, fixed_bezier(coords_in_jt_group, p0, p_right, true)));
+	}
+	
+	return alpha;
+}
+
+// Draws tracks between the joints at the center of jitter-groups based on the given fragment
+// coordinates and masks them on top of the given current color.
+vec3 draw_tracks(vec2 coords, vec3 cur_col)
+{	
+	// Jitter-group
+	float jt_bounds_f = float(jitter_bounds); // I just do not want to keep doing "float(jitter_bounds)"
+	vec2 jt_group_id = floor(coords / jt_bounds_f);
+	vec2 coords_in_jt_group = mod(coords, jt_bounds_f);
+	
+	// Joint
+	vec2 jt_center_vec2 = vec2(float(jitter_center));
+	vec2 joint_pos_pre_jitter = (jt_group_id * jt_bounds_f + jt_center_vec2) + vec2(0.5);
+	vec2 joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
+	vec2 p0 = mod(joint_pos, jt_bounds_f);
 	
 	// BASE CIRCUIT
-	int circuits_bounds = 3;
-	ivec2 circuit_id = ivec2(coords / float(circuits_bounds * jitter_bounds));
-	ivec2 circuit_idx = ivec2(mod(jt_group_id, float(circuits_bounds)));
+	vec2[2] circuit_neighbors;
+	float circuit_alpha = sd_circuit(coords, jt_group_id, joint_pos_pre_jitter, joint_pos, coords_in_jt_group, p0, circuit_neighbors);
 	
-	int circuit_num = int(hash_vec2_float(vec2(circuit_id), seed) * 10.0) % num_circuits;
-	
-	ivec2 next = get_from_circuit(circuit_idx, circuit_num, CIRCUIT_NEXT);
-	if (next != ivec2(-1))
-	{
-		next += circuit_id * circuits_bounds;
-		joint_pos_pre_jitter = (vec2(next) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
-		vec2 p_next = joint_pos - jt_group_id * jt_bounds_f;
-		
-		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_next, tracks_thickness)));
-	}
-	
-	// PREV
-	ivec2 prev = get_from_circuit(circuit_idx, circuit_num, CIRCUIT_PREV);
-	if (prev != ivec2(-1))
-	{
-		prev += circuit_id * circuits_bounds;
-		joint_pos_pre_jitter = (vec2(prev) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
-		vec2 p_prev = joint_pos - jt_group_id * jt_bounds_f;
-		
-		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_prev, tracks_thickness)));
-	}
+	float bridge_alpha = sd_bridge(jt_group_id, joint_pos_pre_jitter, joint_pos, coords_in_jt_group, p0, circuit_neighbors);
+	float alpha = sdf_union(vec2(circuit_alpha, bridge_alpha));
 
 	return mask_aa(cur_col, tracks_color, alpha);
 }
