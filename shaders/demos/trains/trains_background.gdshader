@@ -17,7 +17,7 @@ group_uniforms tracks;
 uniform float tracks_thickness = 0.3;
 uniform float jitter_intensity: hint_range(0.0, 6.0) = 6.0; // Anything beyond that range clips jitter bounds
 const int jitter_bounds = 9; // All cells within this group (width/height defined as number of cells) jitter identically
-const int jitter_center = 5; // The in-jitter-group index of the cell that acts as a track joint
+const int jitter_center = 4; // The in-jitter-group index of the cell that acts as a track joint
 
 const int num_neighbors = 4; // Only jitter-groups that share an edge are considered neighbors
 const vec2[num_neighbors] neighbor_offsets = { vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0) };

@@ -2,18 +2,30 @@
 
 [ext_resource type="Script" uid="uid://bb7ouwmptxgdo" path="res://addons/pronicula_nodes/floating_container.gd" id="1_smfhp"]
 [ext_resource type="Shader" uid="uid://dkmsm567oqw1y" path="res://shaders/demos/trains/trains_background.gdshader" id="2_2rpg6"]
+[ext_resource type="Shader" uid="uid://cyri7gqgomykn" path="res://shaders/demos/trains/trains_splesh.gdshader" id="3_ex7ka"]
+[ext_resource type="ArrayMesh" path="res://assets/splesh_100.tres" id="4_dkwda"]
+[ext_resource type="Script" uid="uid://dfbu76rhhrap6" path="res://scripts/demos/trains/trains_splesh.gd" id="5_ex7ka"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_smfhp"]
 shader = ExtResource("2_2rpg6")
 shader_parameter/time = 0.0
 shader_parameter/size = 100.0
-shader_parameter/seed = 1
+shader_parameter/seed = 23
 shader_parameter/background_color = Color(0.45, 0.4, 0.8, 1)
 shader_parameter/tracks_color = Color(0.1, 0.1, 0.2, 1)
 shader_parameter/tracks_thickness = 0.3
 shader_parameter/jitter_intensity = 0.0
 shader_parameter/show_jitter = false
 shader_parameter/bezier_offset = 3.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dkwda"]
+shader = ExtResource("3_ex7ka")
+shader_parameter/time = 0.0
+shader_parameter/seed = 1
+shader_parameter/num_quads = 100
+shader_parameter/max_id = 1.0
+shader_parameter/x = 5
+shader_parameter/y = 8
 
 [node name="Trains" type="Node2D" unique_id=1225401729]
 
@@ -27,6 +39,12 @@ offset_right = 50.0
 offset_bottom = 50.0
 scale = Vector2(10, 10)
 metadata/_edit_use_anchors_ = true
+
+[node name="SpleshInstance" type="MeshInstance2D" parent="FloatingContainer" unique_id=1594141503]
+material = SubResource("ShaderMaterial_dkwda")
+scale = Vector2(500, 500)
+mesh = ExtResource("4_dkwda")
+script = ExtResource("5_ex7ka")
 
 [node name="UI" type="Panel" parent="FloatingContainer" unique_id=644495612]
 offset_left = 509.0
