@@ -34,14 +34,31 @@ metadata/_edit_use_anchors_ = true
 offset_left = 509.0
 offset_top = 3.0
 offset_right = 680.0
-offset_bottom = 498.0
+offset_bottom = 570.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI" unique_id=2071290171]
 layout_mode = 0
 offset_left = 5.0
 offset_top = 6.0
 offset_right = 166.0
-offset_bottom = 259.0
+offset_bottom = 527.0
+
+[node name="TimeSpeedLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=1138775315]
+layout_mode = 2
+text = "Time speed"
+
+[node name="TimeSpeedInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=1657042854]
+layout_mode = 2
+min_value = -1000000.0
+max_value = 1000000.0
+step = 0.01
+value = 1.0
+allow_greater = true
+allow_lesser = true
+metadata/_edit_use_anchors_ = true
+
+[node name="HSeparator4" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=398665440]
+layout_mode = 2
 
 [node name="SizeLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=913660913]
 layout_mode = 2
@@ -142,6 +159,7 @@ max_value = 1.0
 step = 0.01
 value = 0.75
 
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/TimeSpeedInput" to="FloatingContainer/ColorRect" method="on_set_time_speed"]
 [connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SizeInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["size"]]
 [connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SeedInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["seed"]]
 [connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/JitterSlider" to="FloatingContainer/ColorRect" method="on_change" binds= ["jitter_intensity"]]
