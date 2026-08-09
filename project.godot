@@ -45,3 +45,18 @@ move_around={
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+
+[shader_globals]
+
+global_size={
+"type": "float",
+"value": 100.0
+}
+global_jitter_intensity={
+"type": "float",
+"value": 0.0
+}
+global_seed={
+"type": "int",
+"value": 0
+}

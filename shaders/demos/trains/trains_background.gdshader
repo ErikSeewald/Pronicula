@@ -6,8 +6,8 @@ shader_type canvas_item;
 
 group_uniforms general;
 uniform float time = 0.0;
-uniform float size = 100.0; // A single "cell" in this shader has the width/height: 1/size of uv space
-uniform int seed = 1;
+global uniform float global_size; // A single "cell" in this shader has the width/height: 1/global_size of uv space
+global uniform int global_seed;
 
 group_uniforms colors;
 uniform vec3 background_color: source_color = vec3(0.45, 0.4, 0.8);
@@ -15,7 +15,7 @@ uniform vec3 tracks_color: source_color = vec3(0.1, 0.1, 0.2);
 
 group_uniforms tracks;
 uniform float tracks_thickness = 0.3;
-uniform float jitter_intensity: hint_range(0.0, 6.0) = 6.0; // Anything beyond that range clips jitter bounds
+global uniform float global_jitter_intensity; // Anything beyond that range clips jitter bounds
 const int jitter_bounds = 9; // All cells within this group (width/height defined as number of cells) jitter identically
 const int jitter_center = 4; // The in-jitter-group index of the cell that acts as a track joint
 
@@ -60,7 +60,7 @@ uniform bool show_jitter = false;
 // given coordinates of the fragment. Uses the given current color to mask them on top.
 vec3 draw_joints(vec2 coords, vec3 cur_col)
 {	
-	vec2 jittered = jitter_grouped(coords, float(jitter_bounds), jitter_intensity, seed);
+	vec2 jittered = jitter_grouped(coords, float(jitter_bounds), global_jitter_intensity, global_seed);
 	ivec2 cell_idx = ivec2(jittered);
 	
 	if (show_jitter)
@@ -70,7 +70,7 @@ vec3 draw_joints(vec2 coords, vec3 cur_col)
 		float checker_factor = max(0.4, float((jt_group_id.x + jt_group_id.y) % 2));
 		
 		// And a random color for each cell within the group
-		cur_col.gb = hash_vec2_vec2(vec2(cell_idx), seed) * checker_factor;
+		cur_col.gb = hash_vec2_vec2(vec2(cell_idx), global_seed) * checker_factor;
 	}
 	
 	if (cell_idx.x % jitter_bounds == jitter_center && cell_idx.y % jitter_bounds == jitter_center)
@@ -119,14 +119,14 @@ float sd_circuit(vec2 coords, vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 
 	ivec2 circuit_id = ivec2(coords / float(circuits_bounds * jitter_bounds));
 	ivec2 circuit_idx = ivec2(mod(jt_group_id, float(circuits_bounds)));
 	
-	int circuit_num = int(hash_vec2_float(vec2(circuit_id), seed) * 10.0) % num_circuits;
+	int circuit_num = int(hash_vec2_float(vec2(circuit_id), global_seed) * 10.0) % num_circuits;
 	
 	ivec2 next = get_from_circuit(circuit_idx, circuit_num, CIRCUIT_NEXT);
 	if (next != ivec2(-1))
 	{
 		next += circuit_id * circuits_bounds;
 		joint_pos_pre_jitter = (vec2(next) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
+		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
 		vec2 p_next = joint_pos - jt_group_id * jt_bounds_f;
 		
 		circuit_neighbors[0] = p_next;
@@ -140,7 +140,7 @@ float sd_circuit(vec2 coords, vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 
 	{
 		prev += circuit_id * circuits_bounds;
 		joint_pos_pre_jitter = (vec2(prev) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
+		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
 		vec2 p_prev = joint_pos - jt_group_id * jt_bounds_f;
 		
 		circuit_neighbors[1] = p_prev;
@@ -163,7 +163,7 @@ float sd_bridge(vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec
 	for (int i = 0; i < num_neighbors; i++)
 	{
 		vec2 neighbor_id = jt_group_id - neighbor_offsets[i];
-		int neighbor_offset_idx = int(hash_vec2_float(neighbor_id, seed) * 10.0) % num_neighbors;
+		int neighbor_offset_idx = int(hash_vec2_float(neighbor_id, global_seed) * 10.0) % num_neighbors;
 		vec2 neighbor_offset = neighbor_offsets[neighbor_offset_idx];
 		if (neighbor_id + neighbor_offset == jt_group_id)
 		{
@@ -174,7 +174,7 @@ float sd_bridge(vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec
 	for (int i = 0; i < inputs_found; i++)
 	{
 		joint_pos_pre_jitter = ((jt_group_id + in_offsets[i]) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
+		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
 		vec2 p_left = joint_pos - jt_group_id * jt_bounds_f;
 		
 		if (p_left == circuit_neighbors[0] || p_left == circuit_neighbors[1] ) { continue; }
@@ -183,11 +183,11 @@ float sd_bridge(vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec
 	}
 	
 	// OUT
-	int out_offset_idx = int(hash_vec2_float(jt_group_id, seed) * 10.0) % num_neighbors;
+	int out_offset_idx = int(hash_vec2_float(jt_group_id, global_seed) * 10.0) % num_neighbors;
 	vec2 out_offset = neighbor_offsets[out_offset_idx];
 	
 	joint_pos_pre_jitter = ((jt_group_id + out_offset) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-	joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
+	joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
 	vec2 p_right = joint_pos - jt_group_id * jt_bounds_f;
 	
 	if (p_right != circuit_neighbors[0] && p_right != circuit_neighbors[1] )
@@ -211,7 +211,7 @@ vec3 draw_tracks(vec2 coords, vec3 cur_col)
 	// Joint
 	vec2 jt_center_vec2 = vec2(float(jitter_center));
 	vec2 joint_pos_pre_jitter = (jt_group_id * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-	vec2 joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -jitter_intensity, seed);
+	vec2 joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
 	vec2 p0 = mod(joint_pos, jt_bounds_f);
 	
 	// BASE CIRCUIT
@@ -226,7 +226,7 @@ vec3 draw_tracks(vec2 coords, vec3 cur_col)
 
 void fragment() 
 {
-	vec2 coords = UV * size;
+	vec2 coords = UV * global_size;
 	
 	COLOR.rgb = background_color;
 	COLOR.rgb = draw_joints(coords, COLOR.rgb);

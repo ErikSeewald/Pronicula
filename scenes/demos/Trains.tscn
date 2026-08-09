@@ -9,29 +9,31 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_smfhp"]
 shader = ExtResource("2_2rpg6")
 shader_parameter/time = 0.0
-shader_parameter/size = 100.0
-shader_parameter/seed = 23
 shader_parameter/background_color = Color(0.45, 0.4, 0.8, 1)
 shader_parameter/tracks_color = Color(0.1, 0.1, 0.2, 1)
 shader_parameter/tracks_thickness = 0.3
-shader_parameter/jitter_intensity = 0.0
 shader_parameter/show_jitter = false
 shader_parameter/bezier_offset = 3.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dkwda"]
 shader = ExtResource("3_ex7ka")
 shader_parameter/time = 0.0
-shader_parameter/seed = 1
-shader_parameter/num_quads = 100
+shader_parameter/num_quads = 0
+shader_parameter/circ_size = 0.01
 shader_parameter/max_id = 1.0
-shader_parameter/x = 5
-shader_parameter/y = 8
+shader_parameter/x_offset = 0
+shader_parameter/y_offset = 0
 
 [node name="Trains" type="Node2D" unique_id=1225401729]
 
 [node name="FloatingContainer" type="Node2D" parent="." unique_id=100909572]
 script = ExtResource("1_smfhp")
 metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
+
+[node name="ShaderGlobalsOverride" type="ShaderGlobalsOverride" parent="FloatingContainer" unique_id=2087935645]
+params/global_jitter_intensity = 5.125
+params/global_seed = 1
+params/global_size = 97.3
 
 [node name="ColorRect" type="ColorRect" parent="FloatingContainer" unique_id=142836184]
 material = SubResource("ShaderMaterial_smfhp")
