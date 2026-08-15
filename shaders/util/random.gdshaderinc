@@ -14,7 +14,8 @@ float hash_seedless(float n)
 // Hashes the given float based on the given seed.
 float hash(float n, int seed)
 {
-	return fract(sin(n) * ARBITRARY_FACTOR * hash_seedless(float(seed)));
+	float fSeed = seed == 0 ? 0.001 : float(seed);
+	return fract(sin(n) * ARBITRARY_FACTOR * hash_seedless(fSeed));
 }
 
 // Hash function (vec2 to float) derived from Inigo Quilez's hash functions.
