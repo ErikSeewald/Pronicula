@@ -12,6 +12,9 @@ const vec3 BLUE = vec3(0.2, 0.2, 1.0);
 const vec3 YELLOW = vec3(1.0, 1.0, 0.2);
 const vec3[4] colors = {RED, GREEN, BLUE, YELLOW};
 
+group_uniforms general;
+uniform float time = 0.0;
+
 group_uniforms splesh;
 uniform uint num_quads;
 uniform uint train_lifetime = 16;
@@ -24,9 +27,12 @@ uniform int x_offset = 0;
 uniform int y_offset = 0;
 
 varying flat float quad_id;
-varying vec2 v;
 
-vec2 tr_background(vec2 input) { return input / 11.111111 * (100.0/global_size); }
+vec2 background_to_vertex_space(vec2 background_coord) 
+{ 
+	float converter = 9.0 / global_size;
+	return background_coord * converter; 
+}
 
 void vertex()
 {
@@ -61,7 +67,7 @@ void vertex()
 	vec2 bg_offset = vec2(x + float(x_offset), y + float(y_offset));
 	
 
-	// Loop over the trains lifetime
+	// Loop over the train's lifetime
 	vec2 prevPrevPos = bg_offset;
 	vec2 prevPos = bg_offset;
 	vec2 nextPos = bg_offset;
@@ -75,14 +81,14 @@ void vertex()
 		vec2 jt_group_id = floor(nextPos);
 		ivec2 circuit_id = ivec2(nextPos / float(circuits_bounds));
 		ivec2 circuit_idx = ivec2(mod(jt_group_id, float(circuits_bounds)));
-		int circuit_num = int(hash_vec2_float(vec2(circuit_id), global_seed) * 10.0) % num_circuits;
-		ivec2 next = get_from_circuit(circuit_idx, circuit_num, CIRCUIT_NEXT);	
+		int circuit_num = int(hash_vec2_float(vec2(circuit_id), global_seed) * 10.0) % NUM_DEFINED_CIRCUITS;
+		ivec2 next = get_next_from_cicuit(circuit_idx, circuit_num);	
 		nextPos = vec2(next) + vec2(circuit_id) * float(circuits_bounds);
 		
 		// Also get the next position if the train where to take a bridge
 		// OUT (TODO: ALSO ALLOW THEM TO MOVE ALONG "IN" BRIDGES, OTHERWISE THE CAN GET STUCK)
-		int out_offset_idx = int(hash_vec2_float(jt_group_id, global_seed) * 10.0) % num_neighbors;
-		vec2 out_offset = neighbor_offsets[out_offset_idx];
+		int out_offset_idx = int(hash_vec2_float(jt_group_id, global_seed) * 10.0) % NUM_NEIGHBOR_JOINTS;
+		vec2 out_offset = NEIGHBOR_JOINTS_OFFSETS[out_offset_idx];
 		vec2 bridge_next = prevPos + out_offset;
 		
 		// Take the bridge either if the train has left a circuit and therefore can only take bridges
@@ -97,20 +103,14 @@ void vertex()
 	}
 	
 	// Finally, the coordinates can be jittered and interpolated.
-	nextPos = jitter_grouped(nextPos, 1.0, -global_jitter_intensity / float(jitter_bounds), global_seed);
-	prevPos = jitter_grouped(prevPos, 1.0, -global_jitter_intensity / float(jitter_bounds), global_seed);
+	nextPos = jitter_grouped(nextPos, 1.0, -global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
+	prevPos = jitter_grouped(prevPos, 1.0, -global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
 	bg_offset = mix(prevPos, nextPos, mod(t, 1.0));
-	
-	// DEBUG: Visualize the stored positions using the vertices
-	/*
-	if (VERTEX_ID == 0) { bg_offset = prevPrevPos; }
-	else if (VERTEX_ID == 1) { bg_offset = prevPos; }
-	else if (VERTEX_ID == 2) { bg_offset = nextPos; }*/
 	
 	// Convert to VERTEX space
 	vec2 pos = VERTEX;
-	pos += tr_background(vec2(0.5, 0.5)); // Now aligned with the (unjittered) top left joint
-	pos += tr_background(bg_offset); // Now at the (jittered) bg_offset joint position	
+	pos += background_to_vertex_space(vec2(0.5, 0.5)); // Now aligned with the (unjittered) top left joint
+	pos += background_to_vertex_space(bg_offset); // Now at the (jittered) bg_offset joint position	
 	
 	// Finally, offset the VERTEX by 0.5 so that the center of UV space is
 	// at (0,0).

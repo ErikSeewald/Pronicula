@@ -1,28 +1,37 @@
 #include "res://shaders/util/sdf.gdshaderinc"
 #include "res://shaders/util/random.gdshaderinc"
 
-group_uniforms general;
-uniform float time = 0.0;
-global uniform float global_size; // A single "cell" in this shader has the width/height: 1/global_size of uv space
+/*
+* Shared code (and uniforms) for the representation of the train tracks of this demo.
+* The background shader uses it for drawing the tracks, the train shader uses it to
+* calculate the path of the trains.
+*
+* Note: Global uniforms were used because the background and the trains are different shaders
+* and would otherwise go out of sync if one of their shared uniforms was adjusted in the GUI.
+*/
+
+// A single "cell" in this shader has the width/height: 1/global_size of uv space
+global uniform float global_size;
 global uniform int global_seed;
 
-group_uniforms tracks;
-uniform float tracks_thickness = 0.3;
-global uniform float global_jitter_intensity; // Anything beyond that range clips jitter bounds
-const int jitter_bounds = 9; // All cells within this group (width/height defined as number of cells) jitter identically
-const int jitter_center = 4; // The in-jitter-group index of the cell that acts as a track joint
+// --- JITTER ---
+global uniform float global_jitter_intensity;
+const int JITTER_BOUNDS = 9; // All cells within this group (width/height defined as number of cells) jitter identically
+const int JITTER_CENTER = 4; // The in-jitter-group index of the cell that acts as a track joint
+// --> A single jitter group for a single joint
 
-const int num_neighbors = 4; // Only jitter-groups that share an edge are considered neighbors
-const vec2[num_neighbors] neighbor_offsets = { vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0) };
+const int NUM_NEIGHBOR_JOINTS = 4; // Only jitter-groups that share an edge are considered neighbors
+const vec2[NUM_NEIGHBOR_JOINTS] NEIGHBOR_JOINTS_OFFSETS = { vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0) };
 
+// --- CIRCUITS ---
 // Pre-defined circuits are used within subsections of the total area to ensure high connectivity
-const int circuit_size = 3; // The grid defined by this width/height is guaranteed to have a full circuit of tracks
-const int num_points_in_circuit = circuit_size*circuit_size;
-const int num_circuits = 5; // Different circuits made up of the same number of points to give variety in patterns
+const int CIRCUIT_SIZE = 3; // The grid (of jitter groups) defined by this width/height is guaranteed to have a full circuit of tracks
+const int NUM_JOINTS_IN_CIRCUIT = CIRCUIT_SIZE*CIRCUIT_SIZE;
+const int NUM_DEFINED_CIRCUITS = 5; // Different circuits made up of the same number of points to give variety in patterns
 
-// Structured in such a way that each "row" of num_points_in_circuit values can be indexed:
-// [x+y*circuit_size] -> next value (or (-1,-1) if the point is not part of the circuit)
-const ivec2[num_circuits * num_points_in_circuit] circuit_next = 
+// Structured in such a way that each "row" of NUM_JOINTS_IN_CIRCUIT values can be indexed:
+// [x+y*CIRCUIT_SIZE] -> next value (or (-1,-1) if the point is not part of the circuit)
+const ivec2[NUM_DEFINED_CIRCUITS * NUM_JOINTS_IN_CIRCUIT] NEXT_IN_CIRCUIT = 
 {
 	ivec2(1, 0), ivec2(2, 0), ivec2(2, 1), ivec2(0, 0), ivec2(-1, -1), ivec2(2, 2), ivec2(0, 1), ivec2(0, 2), ivec2(1, 2), // Full circle
 	ivec2(1, 0), ivec2(2, 0), ivec2(2, 1), ivec2(0, 0), ivec2(1, 2), ivec2(1, 1), ivec2(0, 1), ivec2(0, 2), ivec2(-1, -1), // Top left corner
@@ -31,9 +40,9 @@ const ivec2[num_circuits * num_points_in_circuit] circuit_next =
 	ivec2(1, 0), ivec2(2, 0), ivec2(2, 1), ivec2(0, 0), ivec2(0, 1), ivec2(2, 2), ivec2(-1, -1), ivec2(1, 1), ivec2(1, 2) // Top right corner
 };
 
-// Structured in such a way that each "row" of num_points_in_circuit values can be indexed:
-// [x+y*circuit_size] -> previous value (or (-1,-1) if the point is not part of the circuit)
-const ivec2[num_circuits * num_points_in_circuit] circuit_prev = 
+// Structured in such a way that each "row" of NUM_JOINTS_IN_CIRCUIT values can be indexed:
+// [x+y*CIRCUIT_SIZE] -> previous value (or (-1,-1) if the point is not part of the circuit)
+const ivec2[NUM_DEFINED_CIRCUITS * NUM_JOINTS_IN_CIRCUIT] PREV_IN_CIRCUIT = 
 {
 	ivec2(0, 1), ivec2(0, 0), ivec2(1, 0), ivec2(0, 2), ivec2(-1, -1), ivec2(2, 0), ivec2(1, 2), ivec2(2, 2), ivec2(2, 1), // Full circle
 	ivec2(0, 1), ivec2(0, 0), ivec2(1, 0), ivec2(0, 2), ivec2(2, 1), ivec2(2, 0), ivec2(1, 2), ivec2(1, 1), ivec2(-1, -1), // Top left corner
@@ -42,123 +51,26 @@ const ivec2[num_circuits * num_points_in_circuit] circuit_prev =
 	ivec2(0, 1), ivec2(0, 0), ivec2(1, 0), ivec2(1, 1), ivec2(1, 2), ivec2(2, 0), ivec2(-1, -1), ivec2(2, 2), ivec2(2, 1)  // Top right corner
 };
 
-// Named parameters for configuring which of the two arrays to use
-const bool CIRCUIT_NEXT = true;
-const bool CIRCUIT_PREV = false;
-
-// Gets the (next/prev) ivec2 from the circuit defined by circuit_num and the current ivec2 in
-// the series. The constants CIRCUIT_NEXT and CIRCUIT_PREV are passed to the get_next bool.
-ivec2 get_from_circuit(ivec2 current, int circuit_num, bool get_next)
+// Gets the (next/prev) circuit coordinate from the circuit defined by circuit_num and the 
+// given current coordinate the series.
+// Returns (-1,-1) if the current coordinate is not part of the circuit.
+ivec2 _get_from_circuit(ivec2 current, int circuit_num, bool get_next)
 {
 	// Indexed access to const arrays should be faster than a loop solution, even if it requires
 	// two arrays.
-	int index = (current.x + current.y * circuit_size) + circuit_num * num_points_in_circuit;
-	return get_next ? circuit_next[index] : circuit_prev[index];
+	int circuit_index = (current.x + current.y * CIRCUIT_SIZE);
+	int index = circuit_index + circuit_num * NUM_JOINTS_IN_CIRCUIT;
+	return get_next ? NEXT_IN_CIRCUIT[index] : PREV_IN_CIRCUIT[index];
 }
 
-uniform float bezier_offset = 3.0;
-float fixed_bezier(vec2 coords, vec2 a, vec2 b, bool is_right)
+ivec2 get_next_from_cicuit(ivec2 current, int circuit_num)
 {
-	float offset = is_right ? bezier_offset : -bezier_offset;
-	
-	vec2 middle = 0.5 * (a + b);
-	vec2 dir = normalize(a - b);
-	vec2 perpendicular = vec2(-dir.y, dir.x);
-	vec2 control = middle + perpendicular * offset;
-	
-	float q = sd_bezier(coords, a, control, b);
-	return q < tracks_thickness * 0.5 ? 1.0 : 0.0;
+	const bool GET_NEXT = true;
+	return _get_from_circuit(current, circuit_num, GET_NEXT);
 }
 
-float sd_circuit(vec2 coords, vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec2 coords_in_jt_group, vec2 p0, out vec2[2] circuit_neighbors)
+ivec2 get_prev_from_cicuit(ivec2 current, int circuit_num)
 {
-	float alpha = 0.0;
-	
-	float jt_bounds_f = float(jitter_bounds);
-	vec2 jt_center_vec2 = vec2(float(jitter_center));
-	
-	int circuits_bounds = 3;
-	ivec2 circuit_id = ivec2(coords / float(circuits_bounds * jitter_bounds));
-	ivec2 circuit_idx = ivec2(mod(jt_group_id, float(circuits_bounds)));
-	
-	int circuit_num = int(hash_vec2_float(vec2(circuit_id), global_seed) * 10.0) % num_circuits;
-	
-	ivec2 next = get_from_circuit(circuit_idx, circuit_num, CIRCUIT_NEXT);
-	if (next != ivec2(-1))
-	{
-		next += circuit_id * circuits_bounds;
-		joint_pos_pre_jitter = (vec2(next) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
-		vec2 p_next = joint_pos - jt_group_id * jt_bounds_f;
-		
-		circuit_neighbors[0] = p_next;
-		
-		alpha = -sd_oriented_box(coords_in_jt_group, p0, p_next, tracks_thickness);
-	}
-	
-	// PREV
-	ivec2 prev = get_from_circuit(circuit_idx, circuit_num, CIRCUIT_PREV);
-	if (prev != ivec2(-1))
-	{
-		prev += circuit_id * circuits_bounds;
-		joint_pos_pre_jitter = (vec2(prev) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
-		vec2 p_prev = joint_pos - jt_group_id * jt_bounds_f;
-		
-		circuit_neighbors[1] = p_prev;
-		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_prev, tracks_thickness)));	
-	}
-	
-	return alpha;
-}
-
-
-float sd_bridge(vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec2 coords_in_jt_group, vec2 p0, in vec2[2] circuit_neighbors)
-{
-	float alpha = 0.0;
-	
-	float jt_bounds_f = float(jitter_bounds);
-	vec2 jt_center_vec2 = vec2(float(jitter_center));
-	
-	// IN
-
-	vec2[num_neighbors] in_offsets;
-	int inputs_found = 0;
-	for (int i = 0; i < num_neighbors; i++)
-	{
-		vec2 neighbor_id = jt_group_id - neighbor_offsets[i];
-		int neighbor_offset_idx = int(hash_vec2_float(neighbor_id, global_seed) * 10.0) % num_neighbors;
-		vec2 neighbor_offset = neighbor_offsets[neighbor_offset_idx];
-		if (neighbor_id + neighbor_offset == jt_group_id)
-		{
-			in_offsets[inputs_found] = -neighbor_offset;
-			inputs_found++;
-		}
-	}	
-	for (int i = 0; i < inputs_found; i++)
-	{
-		joint_pos_pre_jitter = ((jt_group_id + in_offsets[i]) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
-		vec2 p_left = joint_pos - jt_group_id * jt_bounds_f;
-		
-		if (p_left == circuit_neighbors[0] || p_left == circuit_neighbors[1] ) { continue; }
-		//alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_left, tracks_thickness)));	
-		alpha = sdf_union(vec2(alpha, fixed_bezier(coords_in_jt_group, p0, p_left, false)));
-	}
-	
-	// OUT
-	int out_offset_idx = int(hash_vec2_float(jt_group_id, global_seed) * 10.0) % num_neighbors;
-	vec2 out_offset = neighbor_offsets[out_offset_idx];
-	
-	joint_pos_pre_jitter = ((jt_group_id + out_offset) * jt_bounds_f + jt_center_vec2) + vec2(0.5);
-	joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
-	vec2 p_right = joint_pos - jt_group_id * jt_bounds_f;
-	
-	if (p_right != circuit_neighbors[0] && p_right != circuit_neighbors[1] )
-	{
-		//alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_right, tracks_thickness)));
-		alpha = sdf_union(vec2(alpha, fixed_bezier(coords_in_jt_group, p0, p_right, true)));
-	}
-	
-	return alpha;
+	const bool GET_NEXT = false;
+	return _get_from_circuit(current, circuit_num, GET_NEXT);
 }
