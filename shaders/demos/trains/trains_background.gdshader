@@ -14,20 +14,6 @@ uniform vec3 tracks_color: source_color = vec3(0.1, 0.1, 0.2);
 group_uniforms debug;
 uniform bool show_jitter = false;
 
-uniform float bezier_offset = 3.0;
-float fixed_bezier(vec2 coords, vec2 a, vec2 b, bool is_right)
-{
-	float offset = is_right ? bezier_offset : -bezier_offset;
-	
-	vec2 middle = 0.5 * (a + b);
-	vec2 dir = normalize(a - b);
-	vec2 perpendicular = vec2(-dir.y, dir.x);
-	vec2 control = middle + perpendicular * offset;
-	
-	float q = sd_bezier(coords, a, control, b);
-	return q < tracks_thickness * 0.5 ? 1.0 : 0.0;
-}
-
 float sd_circuit(vec2 coords, vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec2 coords_in_jt_group, vec2 p0, out vec2[2] circuit_neighbors)
 {
 	float alpha = 0.0;
@@ -64,7 +50,7 @@ float sd_circuit(vec2 coords, vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 
 		vec2 p_prev = joint_pos - jt_group_id * jt_bounds_f;
 		
 		circuit_neighbors[1] = p_prev;
-		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_prev, tracks_thickness)));	
+		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_prev, tracks_thickness)));
 	}
 	
 	return alpha;
@@ -99,9 +85,9 @@ float sd_bridge(vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec
 		joint_pos = jitter_grouped(joint_pos_pre_jitter, jt_bounds_f, -global_jitter_intensity, global_seed);
 		vec2 p_left = joint_pos - jt_group_id * jt_bounds_f;
 		
-		if (p_left == circuit_neighbors[0] || p_left == circuit_neighbors[1] ) { continue; }
-		//alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_left, tracks_thickness)));	
-		alpha = sdf_union(vec2(alpha, fixed_bezier(coords_in_jt_group, p0, p_left, false)));
+		if (p_left == circuit_neighbors[0] || p_left == circuit_neighbors[1]) { continue; }
+		
+		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_left, tracks_thickness)));	
 	}
 	
 	// OUT
@@ -114,8 +100,12 @@ float sd_bridge(vec2 jt_group_id, vec2 joint_pos_pre_jitter, vec2 joint_pos, vec
 	
 	if (p_right != circuit_neighbors[0] && p_right != circuit_neighbors[1] )
 	{
-		//alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_right, tracks_thickness)));
-		alpha = sdf_union(vec2(alpha, fixed_bezier(coords_in_jt_group, p0, p_right, true)));
+		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group, p0, p_right, tracks_thickness)));
+		
+		// Draw another track offset by the normal to give that chemistry-formula-like look	
+		vec2 direction = normalize(p0 - p_right);
+		vec2 normal = vec2(-direction.y, direction.x);
+		alpha = sdf_union(vec2(alpha, -sd_oriented_box(coords_in_jt_group - normal, p0, p_right, tracks_thickness)));	
 	}
 	
 	return alpha;

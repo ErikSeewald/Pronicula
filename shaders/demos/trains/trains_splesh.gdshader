@@ -5,26 +5,22 @@ shader_type canvas_item;
 #include "res://shaders/util/debug.gdshaderinc"
 #include "res://shaders/demos/trains/train_tracks.gdshaderinc"
 
-const vec3 BACKGROUND_COL = vec3(0.2, 0.2, 0.2);
-const vec3 RED = vec3(1.0, 0.2, 0.2);
-const vec3 GREEN = vec3(0.2, 1.0, 0.2);
-const vec3 BLUE = vec3(0.2, 0.2, 1.0);
-const vec3 YELLOW = vec3(1.0, 1.0, 0.2);
-const vec3[4] colors = {RED, GREEN, BLUE, YELLOW};
+const vec3 BACKGROUND_COL = vec3(0.5, 0.5, 0.8);
+const vec3 RED = vec3(1.0, 0.2, 0.4);
+const vec3 GREEN = vec3(0.2, 1.0, 0.4);
+const vec3 BLUE = vec3(0.3, 0.3, 1.0);
+const vec3[3] colors = {RED, GREEN, BLUE};
 
 group_uniforms general;
 uniform float time = 0.0;
 
 group_uniforms splesh;
+uniform float greyness : hint_range(0.0, 1.0)= 0.0;
 uniform uint num_quads;
 uniform uint train_lifetime = 16;
 uniform uint train_length = 4;
 
 uniform float circ_size = 0.02;
-
-uniform float max_id : hint_range(0.0, 10.0, 1.0) = 1;
-uniform int x_offset = 0;
-uniform int y_offset = 0;
 
 varying flat float quad_id;
 
@@ -36,17 +32,14 @@ vec2 background_to_vertex_space(vec2 background_coord)
 
 void vertex()
 {
-	// Scale quad
-	VERTEX = (VERTEX - vec2(0.5)) * circ_size + vec2(0.5);
 	
 	// Assign to train_ids to make them represent segments of the train
 	quad_id = floor(float(VERTEX_ID) / 4.0);
 	float train_id = floor(quad_id / float(train_length));
 	
-	// Spawn the segments along an initial distribution
-	float side = floor(sqrt(float(num_quads) / float(train_length)));
-	float y = floor(train_id / side);
-	float x = (train_id - y * side) * 2.0 ;
+	// Scale quad (cars smaller than engine)
+	float size = mod(quad_id, float(train_length)) == 0.0 ? circ_size * 1.5 : circ_size;
+	VERTEX = (VERTEX - vec2(0.5)) * size + vec2(0.5);
 	
 	// Trains hava a lifetime beyond which they respawn. This is done because
 	// some stateful loop over all steps in their lifetime is necessary.
@@ -64,8 +57,8 @@ void vertex()
 	lifestep += 1u;
 	
 	// Get tracks joint position relative to BACKGROUND space
-	vec2 bg_offset = vec2(x + float(x_offset), y + float(y_offset));
-	
+	float side = global_size / float(JITTER_BOUNDS);
+	vec2 bg_offset = floor(hash_vec2_vec2(vec2(float(num_life_cicle), train_id), global_seed) * side);
 
 	// Loop over the train's lifetime
 	vec2 prevPrevPos = bg_offset;
@@ -86,10 +79,36 @@ void vertex()
 		nextPos = vec2(next) + vec2(circuit_id) * float(circuits_bounds);
 		
 		// Also get the next position if the train where to take a bridge
-		// OUT (TODO: ALSO ALLOW THEM TO MOVE ALONG "IN" BRIDGES, OTHERWISE THE CAN GET STUCK)
 		int out_offset_idx = int(hash_vec2_float(jt_group_id, global_seed) * 10.0) % NUM_NEIGHBOR_JOINTS;
 		vec2 out_offset = NEIGHBOR_JOINTS_OFFSETS[out_offset_idx];
 		vec2 bridge_next = prevPos + out_offset;
+		
+		// INPUTS
+		vec2[NUM_NEIGHBOR_JOINTS] in_offsets;
+		int inputs_found = 0;
+		for (int i = 0; i < NUM_NEIGHBOR_JOINTS; i++)
+		{
+			vec2 neighbor_id = jt_group_id - NEIGHBOR_JOINTS_OFFSETS[i];
+			int neighbor_offset_idx = int(hash_vec2_float(neighbor_id, global_seed) * 10.0) % NUM_NEIGHBOR_JOINTS;
+			vec2 neighbor_offset = NEIGHBOR_JOINTS_OFFSETS[neighbor_offset_idx];
+			if (neighbor_id + neighbor_offset == jt_group_id)
+			{
+				in_offsets[inputs_found] = -neighbor_offset;
+				inputs_found++;
+			}
+		}
+		
+		if (inputs_found > 0)
+		{
+			int i = 0;
+			while (i < inputs_found && (bridge_next == prevPrevPos || bridge_next == nextPos))
+			{
+				bridge_next = prevPos + in_offsets[i];
+				i++;
+			}
+		}
+		
+;
 		
 		// Take the bridge either if the train has left a circuit and therefore can only take bridges
 		// or by random chance (if the bridge would not mean backtracking)
@@ -99,6 +118,12 @@ void vertex()
 			// offset hash by train_id to make sure trains decide differently and by num_life_cicle to make sure they take different
 			// paths each respawn
 			if (forceIfLeftCircuit || (hash(float(i) + train_id + float(num_life_cicle), global_seed) > 0.5)) { nextPos = bridge_next;}
+		}
+		
+		bool forceBackIfLeftScreen = nextPos.x < 0.0 || nextPos.y < 0.0 || nextPos.x > side || nextPos.y > side;
+		if (forceBackIfLeftScreen)
+		{
+			nextPos = prevPrevPos;
 		}
 	}
 	
@@ -123,12 +148,11 @@ void fragment()
 	
 	// Color each train segment with the same color
 	float train_id = floor(quad_id / float(train_length));
-	vec3 foreground = colors[int(train_id) % 4];
+	vec3 foreground = colors[int(train_id) % 3];
+	foreground = mix(foreground, BACKGROUND_COL, greyness);
 	
 	// Draw train segment
 	float circle = -sd_circle(UV - vec2(0.5), 0.5);
 	COLOR.rgb = mask_aa(COLOR.rgb, foreground, circle);
 	COLOR.a = mask_aa(0.0, 1.0, circle);
-	
-	//if (quad_id > max_id) { COLOR.a = 0.0; }
 }

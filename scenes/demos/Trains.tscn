@@ -8,25 +8,19 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_smfhp"]
 shader = ExtResource("2_2rpg6")
-shader_parameter/time = 0.0
 shader_parameter/tracks_thickness = 0.3
-shader_parameter/bezier_offset = 3.0
-shader_parameter/background_color = Color(0.45, 0.4, 0.8, 1)
-shader_parameter/tracks_color = Color(0.1, 0.1, 0.2, 1)
+shader_parameter/background_color = Color(0.013999986, 0, 0.07, 1)
+shader_parameter/tracks_color = Color(0.18570167, 0.18589061, 0.3343905, 1)
 shader_parameter/show_jitter = false
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dkwda"]
 shader = ExtResource("3_ex7ka")
-shader_parameter/time = 20.7
-shader_parameter/tracks_thickness = 0.3
-shader_parameter/bezier_offset = 3.0
-shader_parameter/num_quads = 100
-shader_parameter/train_lifetime = 32
+shader_parameter/time = 93.185
+shader_parameter/greyness = 0.0
+shader_parameter/num_quads = 3000
+shader_parameter/train_lifetime = 64
 shader_parameter/train_length = 4
-shader_parameter/circ_size = 0.005
-shader_parameter/max_id = 3.0
-shader_parameter/x_offset = 11
-shader_parameter/y_offset = 15
+shader_parameter/circ_size = 0.006
 
 [node name="Trains" type="Node2D" unique_id=1225401729]
 
@@ -35,7 +29,7 @@ script = ExtResource("1_smfhp")
 metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
 
 [node name="ShaderGlobalsOverride" type="ShaderGlobalsOverride" parent="FloatingContainer" unique_id=2087935645]
-params/global_jitter_intensity = 5.255
+params/global_seed = 12
 params/global_size = 250.0
 
 [node name="ColorRect" type="ColorRect" parent="FloatingContainer" unique_id=142836184]
@@ -50,6 +44,7 @@ material = SubResource("ShaderMaterial_dkwda")
 scale = Vector2(500, 500)
 mesh = ExtResource("4_dkwda")
 script = ExtResource("5_ex7ka")
+num_quads = 2000
 
 [node name="UI" type="Panel" parent="FloatingContainer" unique_id=644495612]
 offset_left = 509.0
