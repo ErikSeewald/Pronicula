@@ -124,8 +124,7 @@ vec3 draw_joints(vec2 coords, vec3 cur_col)
 		ivec2 jt_group_id = ivec2(coords / float(JITTER_BOUNDS));
 		float checker_factor = max(0.4, float((jt_group_id.x + jt_group_id.y) % 2));
 		
-		// And a random color for each cell within the group
-		cur_col.gb = hash_vec2_vec2(vec2(cell_idx), global_seed) * checker_factor;
+		cur_col *= hash_vec2_float(vec2(cell_idx), global_seed) * checker_factor * 10.0;
 	}
 	
 	if (cell_idx.x % JITTER_BOUNDS == JITTER_CENTER && cell_idx.y % JITTER_BOUNDS == JITTER_CENTER)

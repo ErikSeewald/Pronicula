@@ -1,0 +1,41 @@
+[gd_scene format=3 uid="uid://ejvfju2txj38"]
+
+[ext_resource type="Script" uid="uid://bb7ouwmptxgdo" path="res://addons/pronicula_nodes/floating_container.gd" id="1_3yk7x"]
+[ext_resource type="Shader" uid="uid://c8nexs1a6xert" path="res://shaders/demos/splesh/splesh_demo.gdshader" id="2_3ue6y"]
+[ext_resource type="ArrayMesh" path="res://assets/splesh_100.tres" id="3_t8b80"]
+[ext_resource type="Script" uid="uid://cin8bmbiryd8f" path="res://scripts/demos/splesh/splesh.gd" id="4_ii1y1"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4b0ke"]
+shader = ExtResource("2_3ue6y")
+shader_parameter/time = 5.955
+shader_parameter/seed = 1
+shader_parameter/num_quads = 100
+
+[node name="Node2D" type="Node2D" unique_id=643148433]
+
+[node name="FloatingContainer" type="Node2D" parent="." unique_id=914339793]
+script = ExtResource("1_3yk7x")
+metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
+
+[node name="SpleshInstance" type="MeshInstance2D" parent="FloatingContainer" unique_id=1589313523]
+material = SubResource("ShaderMaterial_4b0ke")
+scale = Vector2(15, 15)
+mesh = ExtResource("3_t8b80")
+script = ExtResource("4_ii1y1")
+
+[node name="UI" type="Panel" parent="FloatingContainer" unique_id=2050915781]
+offset_right = 256.0
+offset_bottom = 45.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI" unique_id=451353114]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 6.0
+offset_right = 249.0
+offset_bottom = 259.0
+
+[node name="MenuReturnButton" type="Button" parent="FloatingContainer/UI/VBoxContainer" unique_id=1884873641]
+layout_mode = 2
+text = "Return to menu"
+
+[connection signal="pressed" from="FloatingContainer/UI/VBoxContainer/MenuReturnButton" to="FloatingContainer/SpleshInstance" method="return_to_menu"]

@@ -38,7 +38,7 @@ theme_override_constants/separation = 10
 
 [node name="Title" type="Label" parent="Panel/MarginContainer/VBoxContainer" unique_id=182732770]
 layout_mode = 2
-theme_override_font_sizes/font_size = 25
+theme_override_font_sizes/font_size = 48
 text = "Pronicula"
 
 [node name="HSeparator" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer" unique_id=244727719]
@@ -46,7 +46,7 @@ layout_mode = 2
 
 [node name="DemoLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer" unique_id=34494863]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 40
 text = "Demo scenes"
 horizontal_alignment = 1
 
@@ -56,18 +56,22 @@ theme_override_constants/separation = 10
 
 [node name="HamstersButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/DemoButtons" unique_id=640632832]
 layout_mode = 2
+theme_override_font_sizes/font_size = 32
 text = "Hamsters"
 
 [node name="TrainsButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/DemoButtons" unique_id=1067390067]
 layout_mode = 2
+theme_override_font_sizes/font_size = 32
 text = "Trains"
 
 [node name="SpleshButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/DemoButtons" unique_id=881057187]
 layout_mode = 2
+theme_override_font_sizes/font_size = 32
 text = "Splesh"
 
 [node name="SwitchingTilesButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/DemoButtons" unique_id=810953087]
 layout_mode = 2
+theme_override_font_sizes/font_size = 32
 text = "Switching Tiles
 "
 

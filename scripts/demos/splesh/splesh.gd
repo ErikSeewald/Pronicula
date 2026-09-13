@@ -2,7 +2,7 @@ extends MeshInstance2D
 
 @onready var mat: ShaderMaterial = self.material
 
-@export var num_quads: int = 100
+@export var num_quads: int = 500000
 var time: float = 0.0
 
 func _ready() -> void:
@@ -13,3 +13,9 @@ func _ready() -> void:
 func _process(delta: float): 
 	time += delta
 	mat.set_shader_parameter("time", time)
+	
+	# To compare a mouse pos to a vertex pos in the shader, send this to it
+	# self.to_local(get_global_mouse_position())
+	
+func return_to_menu():
+	get_tree().change_scene_to_file("res://scenes/menu/menu.tscn")

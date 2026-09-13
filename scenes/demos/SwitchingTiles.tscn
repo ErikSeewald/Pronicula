@@ -28,8 +28,8 @@ script = ExtResource("3_gmmhw")
 [node name="UI" type="Panel" parent="FloatingContainer" unique_id=1375960302]
 offset_left = 509.0
 offset_top = 9.0
-offset_right = 627.0
-offset_bottom = 157.0
+offset_right = 649.0
+offset_bottom = 199.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI" unique_id=1425014683]
 layout_mode = 0
@@ -37,6 +37,13 @@ offset_left = 5.0
 offset_top = 6.0
 offset_right = 112.0
 offset_bottom = 134.0
+
+[node name="MenuReturnButton" type="Button" parent="FloatingContainer/UI/VBoxContainer" unique_id=889262027]
+layout_mode = 2
+text = "Return to menu"
+
+[node name="HSeparator0" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=753022383]
+layout_mode = 2
 
 [node name="SizeLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=1508644372]
 layout_mode = 2
@@ -61,5 +68,6 @@ step = 0.1
 value = 0.5
 metadata/_edit_use_anchors_ = true
 
+[connection signal="pressed" from="FloatingContainer/UI/VBoxContainer/MenuReturnButton" to="FloatingContainer/ColorRect" method="return_to_menu"]
 [connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SizeInput" to="FloatingContainer/ColorRect" method="set_grid_size"]
 [connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SpeedInput" to="FloatingContainer/ColorRect" method="set_speed"]

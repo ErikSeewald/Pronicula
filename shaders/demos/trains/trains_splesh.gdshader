@@ -11,16 +11,11 @@ const vec3 GREEN = vec3(0.2, 1.0, 0.4);
 const vec3 BLUE = vec3(0.3, 0.3, 1.0);
 const vec3[3] colors = {RED, GREEN, BLUE};
 
-group_uniforms general;
 uniform float time = 0.0;
-
-group_uniforms splesh;
-uniform float greyness : hint_range(0.0, 1.0)= 0.0;
-uniform uint num_quads;
-uniform uint train_lifetime = 16;
 uniform uint train_length = 4;
-
-uniform float circ_size = 0.02;
+uniform uint train_lifetime = 128;
+uniform float train_size_factor = 1.0;
+uniform float train_greyness : hint_range(0.0, 1.0)= 0.0;
 
 varying flat float quad_id;
 
@@ -38,7 +33,8 @@ void vertex()
 	float train_id = floor(quad_id / float(train_length));
 	
 	// Scale quad (cars smaller than engine)
-	float size = mod(quad_id, float(train_length)) == 0.0 ? circ_size * 1.5 : circ_size;
+	float train_size = 1.75 / global_size * train_size_factor; // Also scale relative to global_size
+	float size = mod(quad_id, float(train_length)) == 0.0 ? train_size * 1.5 : train_size;
 	VERTEX = (VERTEX - vec2(0.5)) * size + vec2(0.5);
 	
 	// Trains hava a lifetime beyond which they respawn. This is done because
@@ -149,7 +145,7 @@ void fragment()
 	// Color each train segment with the same color
 	float train_id = floor(quad_id / float(train_length));
 	vec3 foreground = colors[int(train_id) % 3];
-	foreground = mix(foreground, BACKGROUND_COL, greyness);
+	foreground = mix(foreground, BACKGROUND_COL, train_greyness);
 	
 	// Draw train segment
 	float circle = -sd_circle(UV - vec2(0.5), 0.5);

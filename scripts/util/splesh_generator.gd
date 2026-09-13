@@ -26,7 +26,7 @@ enum CullMode {
 ## Creates a splesh (2D Split-Mesh) and returns it.
 ## - A splesh is made up of a varying amount of disjoint quads.
 ## - All quads have the same vertex position (i.e., overlap by default).
-static func generate_splesh(num_quads: int, cull_mode: CullMode = CullMode.NEVER_CULL) -> ArrayMesh:
+static func generate_splesh(num_quads: int, cull_mode: CullMode = CullMode.DEFAULT_CULL) -> ArrayMesh:
 	var splesh: ArrayMesh = ArrayMesh.new()
 	var vertex_count: int = num_quads * 4
 	var index_count: int = num_quads * 6

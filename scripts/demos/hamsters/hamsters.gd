@@ -15,3 +15,6 @@ func on_change(param_value, param_name) -> void:
 	
 func on_set_time_speed(value: float) -> void:
 	time_speed = value
+
+func return_to_menu():
+	get_tree().change_scene_to_file("res://scenes/menu/menu.tscn")

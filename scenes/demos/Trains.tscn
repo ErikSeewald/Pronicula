@@ -4,7 +4,7 @@
 [ext_resource type="Shader" uid="uid://dkmsm567oqw1y" path="res://shaders/demos/trains/trains_background.gdshader" id="2_2rpg6"]
 [ext_resource type="Shader" uid="uid://cyri7gqgomykn" path="res://shaders/demos/trains/trains_splesh.gdshader" id="3_ex7ka"]
 [ext_resource type="ArrayMesh" path="res://assets/splesh_100.tres" id="4_dkwda"]
-[ext_resource type="Script" uid="uid://dfbu76rhhrap6" path="res://scripts/demos/trains/trains_splesh.gd" id="5_ex7ka"]
+[ext_resource type="Script" uid="uid://dfbu76rhhrap6" path="res://scripts/demos/trains/trains.gd" id="5_ex7ka"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_smfhp"]
 shader = ExtResource("2_2rpg6")
@@ -15,12 +15,11 @@ shader_parameter/show_jitter = false
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dkwda"]
 shader = ExtResource("3_ex7ka")
-shader_parameter/time = 93.185
-shader_parameter/greyness = 0.0
-shader_parameter/num_quads = 3000
-shader_parameter/train_lifetime = 64
+shader_parameter/time = 0.0
 shader_parameter/train_length = 4
-shader_parameter/circ_size = 0.006
+shader_parameter/train_lifetime = 64
+shader_parameter/train_size_factor = 1.0
+shader_parameter/train_greyness = 0.0
 
 [node name="Trains" type="Node2D" unique_id=1225401729]
 
@@ -32,31 +31,170 @@ metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
 params/global_seed = 12
 params/global_size = 250.0
 
-[node name="ColorRect" type="ColorRect" parent="FloatingContainer" unique_id=142836184]
+[node name="Background" type="ColorRect" parent="FloatingContainer" unique_id=142836184]
 material = SubResource("ShaderMaterial_smfhp")
-offset_right = 50.0
-offset_bottom = 50.0
-scale = Vector2(10, 10)
+offset_right = 750.0
+offset_bottom = 750.0
 metadata/_edit_use_anchors_ = true
 
-[node name="SpleshInstance" type="MeshInstance2D" parent="FloatingContainer" unique_id=1594141503]
+[node name="Trains" type="MeshInstance2D" parent="FloatingContainer" unique_id=1594141503 node_paths=PackedStringArray("background_rect")]
 material = SubResource("ShaderMaterial_dkwda")
-scale = Vector2(500, 500)
+scale = Vector2(750, 750)
 mesh = ExtResource("4_dkwda")
 script = ExtResource("5_ex7ka")
-num_quads = 2000
+background_rect = NodePath("../Background")
 
 [node name="UI" type="Panel" parent="FloatingContainer" unique_id=644495612]
-offset_left = 509.0
-offset_top = 3.0
-offset_right = 680.0
-offset_bottom = 498.0
+offset_left = 757.0
+offset_top = 5.0
+offset_right = 957.0
+offset_bottom = 645.0
 metadata/_edit_use_anchors_ = true
 
 [node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI" unique_id=617559644]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
+anchor_bottom = 0.6
 offset_left = 5.0
 offset_top = 6.0
-offset_right = 166.0
-offset_bottom = 259.0
+offset_right = 195.0
+offset_bottom = 258.99997
 metadata/_edit_use_anchors_ = true
+
+[node name="MenuReturnButton" type="Button" parent="FloatingContainer/UI/VBoxContainer" unique_id=1554399032]
+layout_mode = 2
+text = "Return to menu"
+
+[node name="HSeparator0" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=1736144921]
+layout_mode = 2
+
+[node name="TimeSpeedLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=1910896897]
+layout_mode = 2
+text = "Time speed"
+
+[node name="TimeSpeedInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=871589376]
+layout_mode = 2
+min_value = -1000000.0
+max_value = 1000000.0
+step = 0.01
+value = 1.0
+allow_greater = true
+allow_lesser = true
+metadata/_edit_use_anchors_ = true
+
+[node name="HSeparator" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=1384276961]
+layout_mode = 2
+
+[node name="SizeLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=2012645439]
+layout_mode = 2
+text = "Size"
+
+[node name="SizeInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=1389415906]
+layout_mode = 2
+max_value = 10000.0
+step = 0.01
+value = 250.0
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="TrainSizeLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=2109144968]
+layout_mode = 2
+text = "Train size factor"
+
+[node name="TrainSizeInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=1649549366]
+layout_mode = 2
+max_value = 10.0
+step = 0.01
+value = 1.0
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="SeedLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=1051466454]
+layout_mode = 2
+text = "Seed"
+
+[node name="SeedInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=110931332]
+layout_mode = 2
+max_value = 100000.0
+value = 1.0
+rounded = true
+allow_greater = true
+allow_lesser = true
+metadata/_edit_use_anchors_ = true
+
+[node name="HSeparator2" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=1469534150]
+layout_mode = 2
+
+[node name="JitterLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=616211106]
+layout_mode = 2
+text = "Track jitter"
+
+[node name="JitterSlider" type="HSlider" parent="FloatingContainer/UI/VBoxContainer" unique_id=272152962]
+layout_mode = 2
+min_value = -8.0
+max_value = 8.0
+step = 0.01
+
+[node name="ShowJitterCheckbox" type="CheckBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=593059101]
+layout_mode = 2
+text = "Show jitter"
+
+[node name="HSeparator3" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=1935752177]
+layout_mode = 2
+
+[node name="QuadsCountLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=351507592]
+layout_mode = 2
+text = "Splesh quads count"
+
+[node name="QuadsCountInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=330861327]
+layout_mode = 2
+max_value = 1000000.0
+value = 2000.0
+rounded = true
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="TrainLengthLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=1623406223]
+layout_mode = 2
+text = "Train length"
+
+[node name="TrainLengthInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=1913765612]
+layout_mode = 2
+max_value = 100000.0
+value = 4.0
+rounded = true
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="TrainLifetimeLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=223882712]
+layout_mode = 2
+text = "Train lifetime"
+
+[node name="TrainLifetimeInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=178673130]
+layout_mode = 2
+max_value = 100000.0
+value = 128.0
+rounded = true
+allow_greater = true
+metadata/_edit_use_anchors_ = true
+
+[node name="TrainGreynessLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=565991563]
+layout_mode = 2
+text = "Train greyness"
+
+[node name="TrainGreynessSlider" type="HSlider" parent="FloatingContainer/UI/VBoxContainer" unique_id=694099679]
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+
+[connection signal="pressed" from="FloatingContainer/UI/VBoxContainer/MenuReturnButton" to="FloatingContainer/Trains" method="return_to_menu"]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/TimeSpeedInput" to="FloatingContainer/Trains" method="on_set_time_speed"]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SizeInput" to="FloatingContainer/Trains" method="on_change_global_shader_param" binds= ["global_size"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/TrainSizeInput" to="FloatingContainer/Trains" method="on_change_shader_param" binds= ["train_size_factor"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SeedInput" to="FloatingContainer/Trains" method="on_change_global_shader_param" binds= ["global_seed"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/JitterSlider" to="FloatingContainer/Trains" method="on_change_global_shader_param" binds= ["global_jitter_intensity"]]
+[connection signal="toggled" from="FloatingContainer/UI/VBoxContainer/ShowJitterCheckbox" to="FloatingContainer/Trains" method="set_show_jitter"]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/QuadsCountInput" to="FloatingContainer/Trains" method="on_quad_count_change"]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/TrainLengthInput" to="FloatingContainer/Trains" method="on_change_shader_param" binds= ["train_length"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/TrainLifetimeInput" to="FloatingContainer/Trains" method="on_change_shader_param" binds= ["train_lifetime"]]
+[connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/TrainGreynessSlider" to="FloatingContainer/Trains" method="on_change_shader_param" binds= ["train_greyness"]]

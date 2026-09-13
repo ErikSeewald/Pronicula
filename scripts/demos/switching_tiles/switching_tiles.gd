@@ -61,3 +61,6 @@ func _on_set_grid_size() -> void:
 	
 	material.set_shader_parameter("grid_tex", _tex)
 	material.set_shader_parameter("grid_size", grid_size)	
+
+func return_to_menu():
+	get_tree().change_scene_to_file("res://scenes/menu/menu.tscn")

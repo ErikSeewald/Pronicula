@@ -24,24 +24,29 @@ metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
 
 [node name="ColorRect" type="ColorRect" parent="FloatingContainer" unique_id=523229470]
 material = SubResource("ShaderMaterial_58ydm")
-offset_right = 50.0
-offset_bottom = 50.0
-scale = Vector2(10, 10)
+offset_right = 600.0
+offset_bottom = 600.0
 script = ExtResource("3_g7pv0")
 metadata/_edit_use_anchors_ = true
 
 [node name="UI" type="Panel" parent="FloatingContainer" unique_id=962166169]
-offset_left = 509.0
-offset_top = 3.0
-offset_right = 680.0
-offset_bottom = 570.0
+offset_left = 608.985
+offset_right = 779.985
+offset_bottom = 600.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="FloatingContainer/UI" unique_id=2071290171]
 layout_mode = 0
 offset_left = 5.0
 offset_top = 6.0
 offset_right = 166.0
-offset_bottom = 527.0
+offset_bottom = 589.0
+
+[node name="MenuReturnButton" type="Button" parent="FloatingContainer/UI/VBoxContainer" unique_id=1084707067]
+layout_mode = 2
+text = "Return to menu"
+
+[node name="HSeparator0" type="HSeparator" parent="FloatingContainer/UI/VBoxContainer" unique_id=2095269381]
+layout_mode = 2
 
 [node name="TimeSpeedLabel" type="Label" parent="FloatingContainer/UI/VBoxContainer" unique_id=1138775315]
 layout_mode = 2
@@ -159,6 +164,7 @@ max_value = 1.0
 step = 0.01
 value = 0.75
 
+[connection signal="pressed" from="FloatingContainer/UI/VBoxContainer/MenuReturnButton" to="FloatingContainer/ColorRect" method="return_to_menu"]
 [connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/TimeSpeedInput" to="FloatingContainer/ColorRect" method="on_set_time_speed"]
 [connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SizeInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["size"]]
 [connection signal="value_changed" from="FloatingContainer/UI/VBoxContainer/SeedInput" to="FloatingContainer/ColorRect" method="on_change" binds= ["seed"]]
