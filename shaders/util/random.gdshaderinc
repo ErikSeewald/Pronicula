@@ -6,12 +6,14 @@ const vec2 ARBITRARY_VEC2_B = vec2(987.6, 543.2);
 
 // Basic seedless hash function that is mostly used to transform seed_int
 // into seed_float. By Patricio Gonzalez Vivo (Public Domain).
+// Returns a float in [0.0, 1.0)
 float hash_seedless(float n)
 {
     return fract(sin(n) * ARBITRARY_FACTOR);
 }
 
 // Hashes the given float based on the given seed.
+// Returns a float in [0.0, 1.0)
 float hash(float n, int seed)
 {
 	float fSeed = seed == 0 ? 0.001 : float(seed);
@@ -20,6 +22,7 @@ float hash(float n, int seed)
 
 // Hash function (vec2 to float) derived from Inigo Quilez's hash functions.
 // Uses the given seed for pseudo-randomness.
+// Returns a float in [0.0, 1.0)
 float hash_vec2_float(vec2 p, int seed)
 {
 	// Apply seed

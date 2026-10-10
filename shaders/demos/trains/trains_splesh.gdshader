@@ -60,7 +60,6 @@ void vertex()
 	vec2 prevPrevPos = bg_offset;
 	vec2 prevPos = bg_offset;
 	vec2 nextPos = bg_offset;
-	int circuits_bounds = 3;
 	for (uint i = 0u; i < lifestep; i++)
 	{
 		prevPrevPos = prevPos;
@@ -68,11 +67,11 @@ void vertex()
 		
 		// Get the next position in the circuit
 		vec2 jt_group_id = floor(nextPos);
-		ivec2 circuit_id = ivec2(nextPos / float(circuits_bounds));
-		ivec2 circuit_idx = ivec2(mod(jt_group_id, float(circuits_bounds)));
-		int circuit_num = int(hash_vec2_float(vec2(circuit_id), global_seed) * 10.0) % NUM_DEFINED_CIRCUITS;
-		ivec2 next = get_next_from_cicuit(circuit_idx, circuit_num);	
-		nextPos = vec2(next) + vec2(circuit_id) * float(circuits_bounds);
+		ivec2 circuit_id = get_circuit_id(ivec2(nextPos));
+		ivec2 coords_in_circuit = get_coords_in_circuit(nextPos);
+		int circuit_variant = get_circuit_variant(circuit_id);
+		ivec2 next = get_next_from_cicuit(coords_in_circuit, circuit_variant);	
+		nextPos = vec2(circuit_coords_to_jt_group(next, circuit_id));
 		
 		// Also get the next position if the train where to take a bridge
 		int out_offset_idx = int(hash_vec2_float(jt_group_id, global_seed) * 10.0) % NUM_NEIGHBOR_JOINTS;
@@ -124,8 +123,8 @@ void vertex()
 	}
 	
 	// Finally, the coordinates can be jittered and interpolated.
-	nextPos = jitter_grouped(nextPos, 1.0, -global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
-	prevPos = jitter_grouped(prevPos, 1.0, -global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
+	nextPos = jitter_grouped(nextPos, 1.0, global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
+	prevPos = jitter_grouped(prevPos, 1.0, global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
 	bg_offset = mix(prevPos, nextPos, mod(t, 1.0));
 	
 	// Convert to VERTEX space

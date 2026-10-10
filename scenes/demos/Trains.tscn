@@ -11,7 +11,7 @@ shader = ExtResource("2_2rpg6")
 shader_parameter/tracks_thickness = 0.3
 shader_parameter/background_color = Color(0.013999986, 0, 0.07, 1)
 shader_parameter/tracks_color = Color(0.18570167, 0.18589061, 0.3343905, 1)
-shader_parameter/show_jitter = false
+shader_parameter/show_jitter = true
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dkwda"]
 shader = ExtResource("3_ex7ka")
@@ -28,7 +28,8 @@ script = ExtResource("1_smfhp")
 metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
 
 [node name="ShaderGlobalsOverride" type="ShaderGlobalsOverride" parent="FloatingContainer" unique_id=2087935645]
-params/global_seed = 12
+params/global_jitter_intensity = -2.585
+params/global_seed = 8
 params/global_size = 250.0
 
 [node name="Background" type="ColorRect" parent="FloatingContainer" unique_id=142836184]
