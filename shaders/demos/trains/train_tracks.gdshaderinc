@@ -51,8 +51,12 @@ const ivec2[NUM_DEFINED_CIRCUITS * NUM_JOINTS_IN_CIRCUIT] PREV_IN_CIRCUIT =
 	ivec2(0, 1), ivec2(0, 0), ivec2(1, 0), ivec2(1, 1), ivec2(1, 2), ivec2(2, 0), ivec2(-1, -1), ivec2(2, 2), ivec2(2, 1)  // Top right corner
 };
 
-// Called by get_next_from_cicuit and get_prev_from_cicuit
-ivec2 _get_from_circuit(ivec2 current, int circuit_variant, bool get_next)
+// Gets the coordinate of the next/prev element in the circuit.
+// - coords_in_circuit: The current coordinate
+// - circuit_variant: Which of the predefined circuits is used here?
+// - get_next: If true, then the next element is fetched. Otherwise its the previous element
+// Returns (-1,-1) if the current coordinate is not part of the circuit.
+ivec2 get_from_circuit(ivec2 current, int circuit_variant, bool get_next)
 {
 	// Get the index in the circuit series of the current coordinate
 	// and use it to look up the next/prev coordinate.
@@ -63,26 +67,6 @@ ivec2 _get_from_circuit(ivec2 current, int circuit_variant, bool get_next)
 	int circuit_variant_offset = circuit_variant * NUM_JOINTS_IN_CIRCUIT;
 	int lookup_index = index_in_circuit + circuit_variant_offset;
 	return get_next ? NEXT_IN_CIRCUIT[lookup_index] : PREV_IN_CIRCUIT[lookup_index];
-}
-
-// Gets the coordinate of the next element in the circuit.
-// - coords_in_circuit: The current coordinate
-// - circuit_variant: Which of the predefined circuits is used here?
-// Returns (-1,-1) if the current coordinate is not part of the circuit.
-ivec2 get_next_from_cicuit(ivec2 coords_in_circuit, int circuit_variant)
-{
-	const bool GET_NEXT = true;
-	return _get_from_circuit(coords_in_circuit, circuit_variant, GET_NEXT);
-}
-
-// Gets the coordinate of the previous element in the circuit.
-// - coords_in_circuit: The current coordinate
-// - circuit_variant: Which of the predefined circuits is used here?
-// Returns (-1,-1) if the current coordinate is not part of the circuit.
-ivec2 get_prev_from_cicuit(ivec2 coords_in_circuit, int circuit_variant)
-{
-	const bool GET_NEXT = false;
-	return _get_from_circuit(coords_in_circuit, circuit_variant, GET_NEXT);
 }
 
 // Each circuit is made up of CIRCUIT_SIZE x CIRCUIT_SIZE jitter groups.
@@ -123,17 +107,18 @@ vec2 jitter_joint(vec2 joint_pos_pre_jitter)
 	return jitter_grouped(joint_pos_pre_jitter, float(JITTER_BOUNDS), global_jitter_intensity, global_seed);
 }
 
-// Applies the inverse joint jitter based on the jitter bounds, global jitter intensity and global seed.
-// Thereby it undoes the jitter.
-vec2 inverse_jitter_joint(vec2 joint_pos)
-{
-	return jitter_grouped(joint_pos, float(JITTER_BOUNDS), -global_jitter_intensity, global_seed);
-}
-
 // There is NUM_DEFINED_CIRCUITS distinct possible circuits.
 // This function returns the id of the circuit variant that
 //  the circuit of  the given circuit id belongs to.
 int get_circuit_variant(ivec2 circuit_id)
 {
 	return int(hash_vec2_float(vec2(circuit_id), global_seed) * float(NUM_DEFINED_CIRCUITS));
+}
+
+// Returns a random (seed + input deterministic) element from NEIGHBOR_JOINTS_OFFSETS
+// based on the jitter group id.
+vec2 get_random_neighbor_offset(vec2 jt_group_id)
+{
+	int index = int(hash_vec2_float(jt_group_id, global_seed) * float(NUM_NEIGHBOR_JOINTS));
+	return NEIGHBOR_JOINTS_OFFSETS[index];
 }

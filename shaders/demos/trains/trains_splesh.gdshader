@@ -70,12 +70,13 @@ void vertex()
 		ivec2 circuit_id = get_circuit_id(ivec2(nextPos));
 		ivec2 coords_in_circuit = get_coords_in_circuit(nextPos);
 		int circuit_variant = get_circuit_variant(circuit_id);
-		ivec2 next = get_next_from_cicuit(coords_in_circuit, circuit_variant);	
+		
+		const bool GET_NEXT = true;
+		ivec2 next = get_from_circuit(coords_in_circuit, circuit_variant, GET_NEXT);	
 		nextPos = vec2(circuit_coords_to_jt_group(next, circuit_id));
 		
 		// Also get the next position if the train where to take a bridge
-		int out_offset_idx = int(hash_vec2_float(jt_group_id, global_seed) * 10.0) % NUM_NEIGHBOR_JOINTS;
-		vec2 out_offset = NEIGHBOR_JOINTS_OFFSETS[out_offset_idx];
+		vec2 out_offset = get_random_neighbor_offset(jt_group_id);
 		vec2 bridge_next = prevPos + out_offset;
 		
 		// INPUTS
@@ -84,8 +85,7 @@ void vertex()
 		for (int i = 0; i < NUM_NEIGHBOR_JOINTS; i++)
 		{
 			vec2 neighbor_id = jt_group_id - NEIGHBOR_JOINTS_OFFSETS[i];
-			int neighbor_offset_idx = int(hash_vec2_float(neighbor_id, global_seed) * 10.0) % NUM_NEIGHBOR_JOINTS;
-			vec2 neighbor_offset = NEIGHBOR_JOINTS_OFFSETS[neighbor_offset_idx];
+			vec2 neighbor_offset = get_random_neighbor_offset(neighbor_id);
 			if (neighbor_id + neighbor_offset == jt_group_id)
 			{
 				in_offsets[inputs_found] = -neighbor_offset;
