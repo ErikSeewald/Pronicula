@@ -1,3 +1,9 @@
+float mask_coverage(float alpha)
+{
+    float aa = max(fwidth(alpha), 1e-5);
+    return smoothstep(-0.5 * aa, 0.5 * aa, alpha);
+}
+
 // Masks b over a based on alpha with anti-aliasing.
 // alpha > ~0.0 => Overwrites a with b
 float mask_aa(float a, float b, float alpha)

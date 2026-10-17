@@ -1,11 +1,9 @@
 shader_type canvas_item;
 
-#include "res://shaders/util/resource.gdshaderinc"
-#include "res://shaders/util/random.gdshaderinc"
 #include "res://shaders/demos/trains/train_tracks.gdshaderinc"
 
 group_uniforms tracks;
-uniform float tracks_thickness = 0.3;
+uniform float tracks_thickness = 0.4;
 
 group_uniforms colors;
 uniform vec3 background_color: source_color = vec3(0.45, 0.4, 0.8);
@@ -21,7 +19,7 @@ uniform bool show_jitter = false; // Draw a checker pattern across the screen to
 // - jt_group_id: The ID of the jitter group that the fragment that is being drawn falls into
 float draw_circuit(vec2 coords, vec2 joint_pos, vec2 jt_group_id)
 {
-	float alpha = 0.0;
+	float alpha = SDF_UNION_IDENTITY_ELEMENT;
 	
 	// Get information about the circuit
 	ivec2 circuit_id = get_circuit_id(ivec2(jt_group_id));
@@ -53,7 +51,7 @@ float draw_circuit(vec2 coords, vec2 joint_pos, vec2 jt_group_id)
 // - jt_group_id: The ID of the jitter group that the fragment that is being drawn falls into
 float draw_bridges(vec2 coords, vec2 joint_pos, vec2 jt_group_id)
 {
-	float alpha = 0.0;
+	float alpha = SDF_UNION_IDENTITY_ELEMENT;
 	
 	// --- OUTGOING BRIDGE (to another jitter group) ---
 	vec2 out_offset = get_random_neighbor_offset(jt_group_id);
@@ -61,7 +59,7 @@ float draw_bridges(vec2 coords, vec2 joint_pos, vec2 jt_group_id)
 	vec2 out_joint_pos = jitter_joint(out_joint_pos_pre_jitter);
 	
 	float dist_to_bridge = sd_oriented_box(coords, joint_pos, out_joint_pos, tracks_thickness);
-	alpha = sdf_union(vec2(alpha, -dist_to_bridge));
+	alpha = -dist_to_bridge;
 	
 	// Draw another track offset by the normal to give that chemistry-formula-like look	
 	vec2 direction = normalize(joint_pos - out_joint_pos);

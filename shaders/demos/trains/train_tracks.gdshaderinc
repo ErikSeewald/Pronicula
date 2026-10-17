@@ -1,4 +1,5 @@
 #include "res://shaders/util/sdf.gdshaderinc"
+#include "res://shaders/util/resource.gdshaderinc"
 #include "res://shaders/util/random.gdshaderinc"
 
 /*

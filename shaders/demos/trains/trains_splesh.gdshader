@@ -1,43 +1,46 @@
 shader_type canvas_item;
 
-#include "res://shaders/util/resource.gdshaderinc"
-#include "res://shaders/util/sdf.gdshaderinc"
-#include "res://shaders/util/debug.gdshaderinc"
 #include "res://shaders/demos/trains/train_tracks.gdshaderinc"
 
-const vec3 BACKGROUND_COL = vec3(0.5, 0.5, 0.8);
+const vec3 GREY = vec3(0.5, 0.5, 0.8);
 const vec3 RED = vec3(1.0, 0.2, 0.4);
 const vec3 GREEN = vec3(0.2, 1.0, 0.4);
 const vec3 BLUE = vec3(0.3, 0.3, 1.0);
-const vec3[3] colors = {RED, GREEN, BLUE};
+const vec3[3] train_colors = {RED, GREEN, BLUE};
 
 uniform float time = 0.0;
-uniform uint train_length = 4;
-uniform uint train_lifetime = 128;
+uniform uint train_length = 4; // Segments per train
+uniform uint train_lifetime = 128; // How many moves between track joints until "respawn"
 uniform float train_size_factor = 1.0;
-uniform float train_greyness : hint_range(0.0, 1.0)= 0.0;
+uniform float train_greyness : hint_range(0.0, 1.0) = 0.0;
 
-varying flat float quad_id;
+varying flat float quad_id; // Which quad of the splesh is being rendered?
+varying flat float train_id; // Which train does the quad belong to?
 
-vec2 background_to_vertex_space(vec2 background_coord) 
+// Offsets the given vertex so that the quad is centered around (0.0)
+// and scales it based on scaling uniforms.
+// Quads that represent the engine of a train are scaled larger than those that represent cars.
+vec2 centerAndScale(vec2 v)
+{
+	v = v - vec2(0.5);
+	
+	bool isEngine = mod(quad_id, float(train_length)) == 0.0;
+	float train_size = 1.75 / global_size * train_size_factor;
+	float size = isEngine ? train_size * 1.5 : train_size;
+	return v * size;
+}
+
+// Converts a coordinate relative to the jitter groups of the background shader
+// into a coordinate in vertex space of this splesh shader.
+vec2 jitter_group_to_vertex_space(vec2 background_coord) 
 { 
-	float converter = 9.0 / global_size;
+	float converter = float(JITTER_BOUNDS) / global_size;
 	return background_coord * converter; 
 }
 
-void vertex()
+vec2 get_jitter_group_coordinates()
 {
-	
-	// Assign to train_ids to make them represent segments of the train
-	quad_id = floor(float(VERTEX_ID) / 4.0);
-	float train_id = floor(quad_id / float(train_length));
-	
-	// Scale quad (cars smaller than engine)
-	float train_size = 1.75 / global_size * train_size_factor; // Also scale relative to global_size
-	float size = mod(quad_id, float(train_length)) == 0.0 ? train_size * 1.5 : train_size;
-	VERTEX = (VERTEX - vec2(0.5)) * size + vec2(0.5);
-	
-	// Trains hava a lifetime beyond which they respawn. This is done because
+		// Trains hava a lifetime beyond which they respawn. This is done because
 	// some stateful loop over all steps in their lifetime is necessary.
 	// - Each train receives an offset in their life cicle to make it seem more natural
 	// - Each segment/quad of one train also receives an offset to make them follow each other
@@ -126,28 +129,38 @@ void vertex()
 	nextPos = jitter_grouped(nextPos, 1.0, global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
 	prevPos = jitter_grouped(prevPos, 1.0, global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
 	bg_offset = mix(prevPos, nextPos, mod(t, 1.0));
+	return bg_offset;
+}
+
+void vertex()
+{
+	// Get the quad id of the vertex and 
+	// assign splesh quads to train_ids to make them represent segments of the train
+	quad_id = floor(float(VERTEX_ID) / 4.0);	
+	train_id = floor(quad_id / float(train_length));
 	
-	// Convert to VERTEX space
-	vec2 pos = VERTEX;
-	pos += background_to_vertex_space(vec2(0.5, 0.5)); // Now aligned with the (unjittered) top left joint
-	pos += background_to_vertex_space(bg_offset); // Now at the (jittered) bg_offset joint position	
+	// Scale the quad and center it around (0,0)
+	VERTEX = centerAndScale(VERTEX);
 	
-	// Finally, offset the VERTEX by 0.5 so that the center of UV space is
-	// at (0,0).
-	VERTEX = pos - vec2(0.5);
+	// Get the position of the train segment in jitter group space
+	vec2 jt_group_coords = get_jitter_group_coordinates();
+	
+	// Convert it to VERTEX space by
+	// 1. Aligning it with the center of the top left jitter group
+	// (Trains spawn on track joints, which sit at the center of jitter groups -> Therefore this first alignment is needed)
+	VERTEX += jitter_group_to_vertex_space(vec2(0.5, 0.5));
+	
+	// 2. Offsetting it by the jitter group coordinates to align it with the final position relative to the background
+	VERTEX += jitter_group_to_vertex_space(jt_group_coords);
 }
 
 void fragment() 
-{
-	COLOR.rgb = BACKGROUND_COL;
-	
-	// Color each train segment with the same color
-	float train_id = floor(quad_id / float(train_length));
-	vec3 foreground = colors[int(train_id) % 3];
-	foreground = mix(foreground, BACKGROUND_COL, train_greyness);
+{	
+	// Color each segment of the same train with the same color
+	vec3 foreground = train_colors[int(train_id) % 3];
+	COLOR.rgb = mix(foreground, GREY, train_greyness);
 	
 	// Draw train segment
 	float circle = -sd_circle(UV - vec2(0.5), 0.5);
-	COLOR.rgb = mask_aa(COLOR.rgb, foreground, circle);
 	COLOR.a = mask_aa(0.0, 1.0, circle);
 }

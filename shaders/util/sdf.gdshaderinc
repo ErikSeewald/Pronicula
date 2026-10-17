@@ -1,3 +1,7 @@
+// sdf union with this element preserves nearly all smoothness of the original.
+// Important for initializing alpha values for a multi-step union.
+const float SDF_UNION_IDENTITY_ELEMENT = -1e20;
+
 // Returns the signed distance of p to a wheel defined by the outer and
 // inner radius.
 float sd_wheel(vec2 p, float outer_r, float inner_r)
