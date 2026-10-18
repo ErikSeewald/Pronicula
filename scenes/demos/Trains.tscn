@@ -15,11 +15,12 @@ shader_parameter/show_jitter = false
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dkwda"]
 shader = ExtResource("3_ex7ka")
-shader_parameter/time = 0.0
+shader_parameter/time = 98.76
 shader_parameter/train_length = 4
-shader_parameter/train_lifetime = 64
+shader_parameter/train_lifetime = 128
 shader_parameter/train_size_factor = 1.0
 shader_parameter/train_greyness = 0.0
+shader_parameter/train_id_check = 6
 
 [node name="Trains" type="Node2D" unique_id=1225401729]
 
@@ -172,6 +173,7 @@ text = "Train lifetime"
 
 [node name="TrainLifetimeInput" type="SpinBox" parent="FloatingContainer/UI/VBoxContainer" unique_id=178673130]
 layout_mode = 2
+min_value = 1.0
 max_value = 100000.0
 value = 128.0
 rounded = true

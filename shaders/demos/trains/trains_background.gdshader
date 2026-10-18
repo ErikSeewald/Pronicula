@@ -74,7 +74,7 @@ float draw_bridges(vec2 coords, vec2 joint_pos, vec2 jt_group_id)
 	// render to the edge of their own jitter group.
 	for (int i = 0; i < NUM_NEIGHBOR_JOINTS; i++)
 	{
-		// Check all the offset of the neighbors and draw the bridge if any of them land on the current jitter group
+		// Check all the offsets of the neighbors and draw the bridge if any of them land on the current jitter group
 		vec2 neighbor_id = jt_group_id - NEIGHBOR_JOINTS_OFFSETS[i];
 		vec2 neighbor_offset = get_random_neighbor_offset(neighbor_id);
 		if (neighbor_id + neighbor_offset == jt_group_id)
