@@ -54,14 +54,14 @@ float draw_bridges(vec2 coords, vec2 joint_pos, vec2 jt_group_id)
 	float alpha = SDF_UNION_IDENTITY_ELEMENT;
 	
 	// --- OUTGOING BRIDGE (to another jitter group) ---
-	vec2 out_offset = get_random_neighbor_offset(jt_group_id);
+	vec2 out_offset = get_neighbor_offset(jt_group_id);
 	vec2 out_joint_pos_pre_jitter = jt_group_id_to_joint_pos((jt_group_id + out_offset));
 	vec2 out_joint_pos = jitter_joint(out_joint_pos_pre_jitter);
 	
 	float dist_to_bridge = sd_oriented_box(coords, joint_pos, out_joint_pos, tracks_thickness);
 	alpha = -dist_to_bridge;
 	
-	// Draw another track offset by the normal to give that chemistry-formula-like look	
+	// Draw another track offset by the normal to give that chemistry-formula-like look
 	vec2 direction = normalize(joint_pos - out_joint_pos);
 	vec2 normal = vec2(-direction.y, direction.x);
 	
@@ -76,7 +76,7 @@ float draw_bridges(vec2 coords, vec2 joint_pos, vec2 jt_group_id)
 	{
 		// Check all the offsets of the neighbors and draw the bridge if any of them land on the current jitter group
 		vec2 neighbor_id = jt_group_id - NEIGHBOR_JOINTS_OFFSETS[i];
-		vec2 neighbor_offset = get_random_neighbor_offset(neighbor_id);
+		vec2 neighbor_offset = get_neighbor_offset(neighbor_id);
 		if (neighbor_id + neighbor_offset == jt_group_id)
 		{
 			vec2 in_joint_pos_pre_jitter = jt_group_id_to_joint_pos(neighbor_id);

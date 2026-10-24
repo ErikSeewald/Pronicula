@@ -52,8 +52,8 @@ float get_quad_time()
 	return time - quad_time_offset + life_cicle_offset;
 }
 
-// Generates a spawnpoint (joint) for the current train based on the given
-// life cicle that it is in and the joint bounds (side length of the background in number of joints)
+// Generates a spawnpoint (on a track joint) for the current train based on the given
+// life cicle. Ensures that it is in and the joint bounds (side length of the background in number of joints)
 vec2 generate_spawnpoint(uint num_life_cicle, float joint_bounds)
 {
 	vec2 hash = hash_vec2_vec2(vec2(float(num_life_cicle), train_id), global_seed);
@@ -82,69 +82,75 @@ vec2 get_jitter_group_coordinates()
 	
 	// Spawn the train somewhere on the map
 	float joint_bounds = global_size / float(JITTER_BOUNDS); // Screen has joint_bounds x joint_bounds joints
-	vec2 spawnPoint = generate_spawnpoint(num_life_cicle, joint_bounds);
+	vec2 spawn_point = generate_spawnpoint(num_life_cicle, joint_bounds);
 	
 	// Loop over the train's lifetime
-	vec2 prevPrevJoint = spawnPoint;
-	vec2 prevJoint = spawnPoint;
-	vec2 nextJoint = spawnPoint;
+	vec2 prev_joint = spawn_point;
+	vec2 cur_joint = spawn_point;
+	vec2 next_joint = spawn_point;
 	for (uint i = 0u; i < lifestep; i++)
 	{
-		prevPrevJoint = prevJoint;
-		prevJoint = nextJoint;
+		prev_joint = cur_joint;
+		cur_joint = next_joint;
+		
+		// Get current circuit
+		ivec2 cur_circuit_id = get_circuit_id(ivec2(cur_joint));
+		ivec2 cur_coords_in_circuit = get_coords_in_circuit(cur_joint);
+		int cur_circuit_variant = get_circuit_variant(cur_circuit_id);
 		
 		// Get the next position in the circuit
-		vec2 jt_group_id = floor(nextJoint);
-		ivec2 circuit_id = get_circuit_id(ivec2(nextJoint));
-		ivec2 coords_in_circuit = get_coords_in_circuit(nextJoint);
-		int circuit_variant = get_circuit_variant(circuit_id);
-		
 		const bool GET_NEXT = true;
-		ivec2 next = get_from_circuit(coords_in_circuit, circuit_variant, GET_NEXT);	
-		nextJoint = vec2(circuit_coords_to_jt_group(next, circuit_id));
+		ivec2 next_in_circuit = get_from_circuit(cur_coords_in_circuit, cur_circuit_variant, GET_NEXT);	
+		next_joint = vec2(circuit_coords_to_jt_group(next_in_circuit, cur_circuit_id));
 		
-		// Also get the next position if the train where to take a bridge
-		vec2 out_offset = get_random_neighbor_offset(jt_group_id);
-		vec2 bridge_next = prevJoint + out_offset;
+		// Also get the next position if the train were to take a bridge
+		vec2 bridge_next = cur_joint + get_neighbor_offset(cur_joint);
 		
-		// INPUTS
+		// And check for incoming bridges from neighbor joints
 		for (int i = 0; i < NUM_NEIGHBOR_JOINTS; i++)
 		{
-			// Check all the offsets of the neighbors to see if any land on current jitter group
-			vec2 neighbor_id = jt_group_id - NEIGHBOR_JOINTS_OFFSETS[i];
-			vec2 neighbor_offset = get_random_neighbor_offset(neighbor_id);
-			if (neighbor_id + neighbor_offset == jt_group_id)
+			vec2 neighbor_joint = cur_joint - NEIGHBOR_JOINTS_OFFSETS[i];
+			vec2 neighbor_bridge_offset = get_neighbor_offset(neighbor_joint);
+			if (neighbor_joint + neighbor_bridge_offset == cur_joint)
 			{	
-				if (bridge_next == prevPrevJoint || bridge_next == nextJoint)
+				// If the bridge_next would not have exited the circuit, overwrite it
+				// with the incoming bridge. Last to overwrite wins!
+				if (bridge_next == prev_joint || bridge_next == next_joint)
 				{
-					bridge_next = prevJoint + neighbor_offset;
+					bridge_next = neighbor_joint;
 				}
 			}
 		}
 		
-		// Take the bridge either if the train has left a circuit and therefore can only take bridges
-		// or by random chance (if the bridge would not mean backtracking)
-		bool forceIfLeftCircuit = next == ivec2(-1);
-		if (forceIfLeftCircuit || (bridge_next != prevPrevJoint && bridge_next != nextJoint))
+		// Decide whether to take the bridge or follow the circuit.
+		// Only even consider it if the bridge is not backtracking or if the current joint is not in a circuit.
+		bool notPartOfCircuit = next_in_circuit == ivec2(-1);
+		bool bridgeWouldNotBackgrack = (bridge_next != prev_joint && bridge_next != next_joint);
+		if (notPartOfCircuit || bridgeWouldNotBackgrack)
 		{
-			// offset hash by train_id to make sure trains decide differently and by num_life_cicle to make sure they take different
-			// paths each respawn
-			if (forceIfLeftCircuit || (hash(float(i) + train_id + float(num_life_cicle), global_seed) > 0.5)) { nextJoint = bridge_next;}
+			// Random chance based on iteration and train_id and offset by num_life_cicle 
+			// to make sure trains take different paths each respawn.
+			bool takeBridge = hash(float(i) + train_id + float(num_life_cicle), global_seed) > 0.5;
+			
+		 	// If not in a circuit, force taking the bridge
+			if (takeBridge || notPartOfCircuit) { next_joint = bridge_next;}
 		}
 		
 		// Force the quad back if it has left the screen
-		if (nextJoint.x < 0.0 || nextJoint.y < 0.0 || nextJoint.x > joint_bounds || nextJoint.y > joint_bounds)
+		if (next_joint.x < 0.0 || next_joint.y < 0.0 || next_joint.x > joint_bounds || next_joint.y > joint_bounds)
 		{
-			nextJoint = prevPrevJoint;
+			next_joint = prev_joint;
 		}
 	}
 	
-	// Apply the uniform jitter to the coordinates
-	nextJoint = jitter_grouped(nextJoint, 1.0, global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
-	prevJoint = jitter_grouped(prevJoint, 1.0, global_jitter_intensity / float(JITTER_BOUNDS), global_seed);
+	// Apply jitter to the coordinates based on the global shader uniforms
+	const float _jt_group_size = 1.0; // 1.0 because the coordinates are already relative to jitter groups
+	float _jitter_intensity = global_jitter_intensity / float(JITTER_BOUNDS); // Need to scale this down for the same reason
+	cur_joint = jitter_grouped(cur_joint, _jt_group_size, _jitter_intensity, global_seed);
+	next_joint = jitter_grouped(next_joint, _jt_group_size, _jitter_intensity, global_seed);
 	
-	// Finally, interpolate between the previous and next track joint to get the position.
-	return mix(prevJoint, nextJoint, mod(quad_time, 1.0));
+	// Finally, interpolate between the current and next track joint to get the position.
+	return mix(cur_joint, next_joint, mod(quad_time, 1.0));
 }
 
 void vertex()

@@ -118,7 +118,7 @@ int get_circuit_variant(ivec2 circuit_id)
 
 // Returns a random (seed + input deterministic) element from NEIGHBOR_JOINTS_OFFSETS
 // based on the jitter group id.
-vec2 get_random_neighbor_offset(vec2 jt_group_id)
+vec2 get_neighbor_offset(vec2 jt_group_id)
 {
 	int index = int(hash_vec2_float(jt_group_id, global_seed) * float(NUM_NEIGHBOR_JOINTS));
 	return NEIGHBOR_JOINTS_OFFSETS[index];
