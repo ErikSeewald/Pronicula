@@ -15,12 +15,11 @@ shader_parameter/show_jitter = false
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dkwda"]
 shader = ExtResource("3_ex7ka")
-shader_parameter/time = 97.085
+shader_parameter/time = 69.295
 shader_parameter/train_length = 4
 shader_parameter/train_lifetime = 128
 shader_parameter/train_size_factor = 1.0
 shader_parameter/train_greyness = 0.0
-shader_parameter/train_id_check = 6
 
 [node name="Trains" type="Node2D" unique_id=1225401729]
 
@@ -29,6 +28,7 @@ script = ExtResource("1_smfhp")
 metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
 
 [node name="ShaderGlobalsOverride" type="ShaderGlobalsOverride" parent="FloatingContainer" unique_id=2087935645]
+params/global_seed = 8
 params/global_size = 250.0
 
 [node name="Background" type="ColorRect" parent="FloatingContainer" unique_id=142836184]

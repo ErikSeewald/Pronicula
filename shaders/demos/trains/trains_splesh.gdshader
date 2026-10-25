@@ -17,6 +17,10 @@ uniform float train_greyness : hint_range(0.0, 1.0) = 0.0;
 varying flat float quad_id; // Which quad of the splesh is being rendered?
 varying flat float train_id; // Which train does the quad belong to?
 
+// Max. options for the next joint at any time
+// (Next in circuit, prev in circuit, outgoing bridge, incoming bridges from neighbor joints)
+const int NUM_NEXT_OPTIONS = NUM_NEIGHBOR_JOINTS + 3;
+
 // Offsets the given vertex so that the quad is centered around (0.0)
 // and scales it based on scaling uniforms.
 // Quads that represent the engine of a train are scaled larger than those that represent cars.
@@ -60,6 +64,18 @@ vec2 generate_spawnpoint(uint num_life_cicle, float joint_bounds)
 	return floor(hash * joint_bounds);
 }
 
+// Returns true if the given vec2 is not equal to the given previous joint or
+// any other candidate for the next joint.
+bool is_next_joint_candidate(vec2 joint, vec2 prev_joint, vec2[NUM_NEXT_OPTIONS] next_options)
+{
+	bool is_candidate = joint != prev_joint;
+	for (int i = 0; i < NUM_NEXT_OPTIONS && is_candidate; i++)
+	{
+		is_candidate = is_candidate && joint != next_options[i];
+	}
+	return is_candidate;
+}
+
 // Gets the coordinates of the quad that is being rendered in jitter group space.
 // Since there is one track joint per jitter group and the trains only move between joints,
 // it is easier to calculate the train's position in this coordinate system and then later
@@ -81,7 +97,8 @@ vec2 get_jitter_group_coordinates()
 	uint num_life_cicle = uint(quad_time / float(train_lifetime));
 	
 	// Spawn the train somewhere on the map
-	float joint_bounds = global_size / float(JITTER_BOUNDS); // Screen has joint_bounds x joint_bounds joints
+	// (Offset joint_bounds by -0.5 because the joints are at the jitter group center)
+	float joint_bounds = floor(global_size / float(JITTER_BOUNDS) - 0.5);
 	vec2 spawn_point = generate_spawnpoint(num_life_cicle, joint_bounds);
 	
 	// Loop over the train's lifetime
@@ -93,53 +110,56 @@ vec2 get_jitter_group_coordinates()
 		prev_joint = cur_joint;
 		cur_joint = next_joint;
 		
+		// Initialize all options for the next joint to vec2(-1).
+		// Options in order are: Next in circuit, outgoing bridge, incoming bridges
+		vec2[NUM_NEXT_OPTIONS] next_options = {vec2(-1), vec2(-1), vec2(-1), vec2(-1), vec2(-1), vec2(-1), vec2(-1)};
+		
 		// Get current circuit
 		ivec2 cur_circuit_id = get_circuit_id(ivec2(cur_joint));
 		ivec2 cur_coords_in_circuit = get_coords_in_circuit(cur_joint);
 		int cur_circuit_variant = get_circuit_variant(cur_circuit_id);
 		
-		// Get the next position in the circuit
-		const bool GET_NEXT = true;
-		ivec2 next_in_circuit = get_from_circuit(cur_coords_in_circuit, cur_circuit_variant, GET_NEXT);	
-		next_joint = vec2(circuit_coords_to_jt_group(next_in_circuit, cur_circuit_id));
+		// Get the next and previous position in the circuit
+		// (previous is an option too because we might have entered via bridge -> prev might be a new path)
+		ivec2 next_coords_in_circuit = get_from_circuit(cur_coords_in_circuit, cur_circuit_variant, true);
+		ivec2 prev_coords_in_circuit = get_from_circuit(cur_coords_in_circuit, cur_circuit_variant, false);	
+		if (next_coords_in_circuit != ivec2(-1)) // Skip if not part of a circuit at all
+		{
+			next_options[0] = vec2(circuit_coords_to_jt_group(next_coords_in_circuit, cur_circuit_id));
+			next_options[1] = vec2(circuit_coords_to_jt_group(prev_coords_in_circuit, cur_circuit_id));
+		}
 		
-		// Also get the next position if the train were to take a bridge
-		vec2 bridge_next = cur_joint + get_neighbor_offset(cur_joint);
+		// Also get the next position if the train were to take the outgoing bridge
+		next_options[2] = cur_joint + get_neighbor_offset(cur_joint);
 		
 		// And check for incoming bridges from neighbor joints
 		for (int i = 0; i < NUM_NEIGHBOR_JOINTS; i++)
-		{
+		{	
 			vec2 neighbor_joint = cur_joint - NEIGHBOR_JOINTS_OFFSETS[i];
 			vec2 neighbor_bridge_offset = get_neighbor_offset(neighbor_joint);
 			if (neighbor_joint + neighbor_bridge_offset == cur_joint)
 			{	
-				// If the bridge_next would not have exited the circuit, overwrite it
-				// with the incoming bridge. Last to overwrite wins!
-				if (bridge_next == prev_joint || bridge_next == next_joint)
-				{
-					bridge_next = neighbor_joint;
-				}
+				next_options[3 + i] = neighbor_joint;
 			}
 		}
 		
-		// Decide whether to take the bridge or follow the circuit.
-		// Only even consider it if the bridge is not backtracking or if the current joint is not in a circuit.
-		bool notPartOfCircuit = next_in_circuit == ivec2(-1);
-		bool bridgeWouldNotBackgrack = (bridge_next != prev_joint && bridge_next != next_joint);
-		if (notPartOfCircuit || bridgeWouldNotBackgrack)
-		{
-			// Random chance based on iteration and train_id and offset by num_life_cicle 
-			// to make sure trains take different paths each respawn.
-			bool takeBridge = hash(float(i) + train_id + float(num_life_cicle), global_seed) > 0.5;
-			
-		 	// If not in a circuit, force taking the bridge
-			if (takeBridge || notPartOfCircuit) { next_joint = bridge_next;}
-		}
+		// Randomly choose one of the options for the next joint
+		float rand_hash = hash(float(i + num_life_cicle) + train_id, global_seed);
+		int random_idx = int(rand_hash * float(NUM_NEXT_OPTIONS));
 		
-		// Force the quad back if it has left the screen
-		if (next_joint.x < 0.0 || next_joint.y < 0.0 || next_joint.x > joint_bounds || next_joint.y > joint_bounds)
+		// If the chosen joint is out of bounds (includes invalid indicator vec2(-1)), 
+		// or if it would lead to backtracking, use the next valid one.
+		// If we have run out of non-backtracking options, just backtrack.
+		for (int j = 0; j < NUM_NEXT_OPTIONS; j++)
 		{
-			next_joint = prev_joint;
+			vec2 chosen_next = next_options[(random_idx + j) % NUM_NEXT_OPTIONS];
+			
+			// Skip if out of bounds
+			if (chosen_next.x < 0.0 || chosen_next.y < 0.0 || chosen_next.x > joint_bounds || chosen_next.y > joint_bounds)
+			{ continue; }
+			
+			next_joint = chosen_next; // Save it for now, even if it might backtrack
+			if (next_joint != prev_joint) { break; } // Not backtracking -> Perfect. Exit early.
 		}
 	}
 	
@@ -175,7 +195,6 @@ void vertex()
 	VERTEX += jitter_group_to_vertex_space(jt_group_coords);
 }
 
-uniform int train_id_check = 0;
 void fragment() 
 {	
 	// Color each segment of the same train with the same color
