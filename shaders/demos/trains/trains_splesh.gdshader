@@ -64,18 +64,6 @@ vec2 generate_spawnpoint(uint num_life_cicle, float joint_bounds)
 	return floor(hash * joint_bounds);
 }
 
-// Returns true if the given vec2 is not equal to the given previous joint or
-// any other candidate for the next joint.
-bool is_next_joint_candidate(vec2 joint, vec2 prev_joint, vec2[NUM_NEXT_OPTIONS] next_options)
-{
-	bool is_candidate = joint != prev_joint;
-	for (int i = 0; i < NUM_NEXT_OPTIONS && is_candidate; i++)
-	{
-		is_candidate = is_candidate && joint != next_options[i];
-	}
-	return is_candidate;
-}
-
 // Gets the coordinates of the quad that is being rendered in jitter group space.
 // Since there is one track joint per jitter group and the trains only move between joints,
 // it is easier to calculate the train's position in this coordinate system and then later
