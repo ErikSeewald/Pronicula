@@ -21,6 +21,7 @@ All of these demos can be controlled the same way:
     - Use taps and dragging (+ on-screen-keyboard) as input on the Godot-GUI elements included in the demos.
 
 If additional controls exist for a specific demo, then they are explained in the corresponding section.
+The zooming and dragging logic is implemented in the [pronicula_nodes](/addons/pronicula_nodes/) addon provided with this repo.
 
 ## Hamsters
 In a completely stateless manner, this shader renders hamsters walking around, running on wheels, and getting flung by them.
@@ -43,30 +44,34 @@ My system was able to render 30 million moving "entities" with smooth 60FPS, the
 TODO: More thorough explanation
 
 ## Trains
-The train demo renders an infinitely scalable map covered in train tracks across which trains made up of a dynamically scalable amounts of cars/segments travel.
+The train demo renders an infinitely scalable map covered in train tracks, across which trains made up of a dynamically scalable amounts of cars/segments travel.
 For this, the demo is made up of two separate shaders (both making use of [train_tracks.gdshaderinc](/shaders/demos/trains/train_tracks.gdshaderinc) for shared logic):
 1. **The background shader** ([trains_background.gdshader](/shaders/demos/trains/trains_background.gdshader)):
    - Renders the train tracks and track joints on a 2D color rect.
 2. **The train shader** ([trains_splesh.gdshader](/shaders/demos/trains/trains_splesh.gdshader)):
-   - Uses the vertex shader to place every quad of a splesh at a specific position in space to represent a single train car/segment.
+   - Uses the vertex shader to place every quad of a [splesh](#splesh) at a specific position in space to represent a single train car/segment.
    - Uses the fragment shader to give single trains the same color across every segment.
 
-The shader code translates between various coordinate systems depending on the situation:
-- **UV space**: The base coordinates of the fragments background shader.
+The shade code contains lots of comments explaining how this is achieved in detail. Before
+looking at the code though, there are a few things to keep in mind.
+The code translates between various coordinate systems depending on the situation:
+- **UV space**: The fragment coordinates of the background shader.
 - **WORLD space**: The main coordinate system of the background shader. (```UV * global_size```)
 - **JITTER GROUP space**: WORLD space is divided into a larger grid in which every fragment in the same jitter group is jittered the same way.
-  Every jitter group contains exactly one track joint at its center. Because the groups themselves jitter differently, this allows for a random looking distribution of joints. (```WORLD / JITTER_BOUNDS```)
+  Every jitter group contains exactly one track joint at its center. Because the different groups jitter differently, this allows for a random looking distribution of joints. (```WORLD / JITTER_BOUNDS```)
 - **CIRCUIT space**: JITTER GROUP space is further divided into areas of multiple joints which all always contain a complete circuit. These circuits are picked from a premade selection of circuits and then bridged together. This is done because fully random connections on their own do not have high enough connectivity for good train movement. (```JITTER GROUP / CIRCUIT_SIZE```)
 - **VERTEX space**: Coordinates relative to the geometry of the splesh. The position of a train segment needs to be calculated in JITTER GROUP space first to know which joints it has been moving along and then translated into VERTEX space as the output of the vertex shader. (```JITTER GROUP * JITTER_BOUNDS / global_size```)
 
 As mentioned earlier, the background shader first lays out the joints in a grid, then connects them as a set of disjoint circuits, then bridges these circuits randomly, and finally jitters
-the track joints for a random looking network. The train shader has trains spawn on random joints at random times and then iteratively calculates their movement over their lifetime (which is a modifiable parameter) up to the iteration of the current time uniform. Since the trains are only on the GPU and no state is ever written, this iterative process needs to be calculated again every frame. However, since it only needs to be done on the vertex level and is fully parallelizable between vertices on the GPU, it is very fast. To choose which tracks to take at each iteration, the train shader makes use of the same logic as the background shader, being able to move to one of:
+the track joints for a random looking network. The train shader has trains spawn on random joints at random times and then iteratively calculates their movement over their *lifetime* (which is a modifiable parameter) up to the iteration of the current time uniform. The lifetimes of different trains are offset so that they do not all spawn and respawn at the same time. Since the trains only exist on the GPU and no state is ever saved, this iterative process needs to be redone every frame. However, since it is only calculated on the vertex level and is fully parallelizable between vertices, it is very fast.
+
+To choose which tracks to take at each iteration, the train shader makes use of the same logic as the background shader, being able to move to one of:
 - **A**: The previous joint in a circuit (if the current joint is part of a circuit)
 - **B**: The next joint in a circuit (if the current joint is part of a circuit)
 - **D**: The joint that the outgoing bridge (every joint has one) of the current joint is connected to
 - **E**: One of the four neighbor joints in the grid (*only if* there exists an incoming bridge from them to the current joint)
 
-While the choice which joint to move to next is random, a choice that would result in the train backtracking to the joint it was at previously is always skipped (unless its the only possible option) to make movement seem more natural.
+While the choice which joint to move to next is random, a choice that would result in the train backtracking to the joint it was at previously is always skipped (unless it is the only possible option) to make movement seem more natural.
 
 
 #### GUI Parameters
