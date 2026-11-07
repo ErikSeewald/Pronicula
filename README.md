@@ -89,9 +89,31 @@ The GUI offers a few parameters for experimenting with the demo code.
 
 
 ## Switching Tiles
-A grid of tiles where two tiles periodically switch places.
+A grid of tiles where two tiles periodically switch places with a little moving animation.
+Tiles are rendered with polygons of different colors and vertex counts inside.
+
+
+Whenever two tiles switch, the one that is animated to move to its new position reveals a tile that looks exactly
+like its old neighbor tile behind it and moves on top of the neighbor tile, replacing it.
 
 This shader and script were the first experiment with how well I could partially offload a stateful animation to the shader.
 State switches are handled by the script while rendering and animation is handled by the shader.
 
-TODO: More thorough explanation? Maybe there is not much more to be said
+For this, [switching_tiles.gd](/scripts/demos/switching_tiles/switching_tiles.gd) does the following:
+- Depending on what grid size is set in the GUI, it generates a texture with *grid_size* x *grid_size* pixels
+  and gives each pixel a random red intensity. Blue and green being left at zero at first.
+- In the update function, it checks if enough time has passed for a new tile switch to occur (based on the *speed* parameter in the GUI)
+- If a switch needs to occur, it randomly chooses a pixel and a random neighbor. Then it switches the rgb values of both pixels. Additionally, it writes the red value that the neighbor had before the switch into the neighbor's green channel so that the shader can keep track of the old state when animating the change.
+- Finally, the script passes the updated texture, the coordinates of the changing pixels and the direction in which the chosen pixel moves to switch with the neighbor to the shader (along with the current time value).
+
+Then, [switching_tiles.gdshader](/shaders/demos/switching_tiles/switching_tiles.gdshader) does the following:
+- By mapping the [0.0, 1.0] range of a pixel's color in the texture that the shader received from the script to one of a set of different *classes*, 
+  different tiles can be rendered with polygons of different colors and vertex counts.
+- Which pixel value needs to be sampled to get the class of the tile depends on which of the following cases the fragment falls on to
+  (determined through the state texture and the shader uniforms received from the script):
+  1. The fragment falls onto a tile that is not involved in the current switch. Its class is sampled from the red value of pixel that represents the entire tile in the texture.
+  2. The fragment falls onto a tile that was the chosen neighbor of the randomly chosen pixel for the current switch. Here the class needs to be sampled from the pixel's green value because red already contains the switched value of the tile that should only be rendered after the change has been animated.
+  3. The fragment falls onto the tile that was the original position of the randomly chosen pixel. The class is immediately sampled from the new red value because the moving tile is going to be animated moving away from this square to its new position and leaving behind a tile with the old neighbor's value.
+  4. The fragment falls onto the in-between-grid position of the tile that is being animated to move to its new grid position. The position of the moving tile depends on the time parameter
+  in this case, the class is sampled from the red value of the grid square that it will arrive at once the animation has finished. 
+- To sample the polygon correctly, the fragment's UV coordinates are remapped into the range of the tile. For the moving tile, the coordinate offset needs to be taken into account.
