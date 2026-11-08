@@ -50,6 +50,12 @@ theme_override_font_sizes/font_size = 40
 text = "Demo scenes"
 horizontal_alignment = 1
 
+[node name="READMEnotice" type="Label" parent="Panel/MarginContainer/VBoxContainer" unique_id=22097529]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "See README.md for an explanation of these demos."
+horizontal_alignment = 1
+
 [node name="DemoButtons" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer" unique_id=1210519913]
 layout_mode = 2
 theme_override_constants/separation = 10

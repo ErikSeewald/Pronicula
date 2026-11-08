@@ -5,7 +5,7 @@ extends ColorRect
 		grid_size = value
 		_on_set_grid_size()
 
-@export var speed := 0.5
+@export var speed := 1.0
 
 const DIRECTIONS := [Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0)]
 
@@ -23,10 +23,10 @@ func _ready() -> void:
 	_on_set_grid_size()
 
 func _process(delta: float) -> void:
-	time += delta
+	time += delta * speed
 	
 	# Switch two squares
-	if time > speed:
+	if time >= 1.0:
 		time = 0.0
 		var from = Vector2i(int(randf()*grid_size), int(randf()*grid_size))
 		var direction = int(randf() * len(DIRECTIONS))
@@ -49,7 +49,7 @@ func _process(delta: float) -> void:
 		material.set_shader_parameter("move_dir", direction)
 		
 	# Shader only expects time to be 0.0 (start moving) to 1.0 (move finished)
-	material.set_shader_parameter("time", time / speed)
+	material.set_shader_parameter("time", time)
 
 ## Resets the grid texture to the new dimensions and sends it to the shader
 func _on_set_grid_size() -> void:
