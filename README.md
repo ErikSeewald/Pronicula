@@ -9,6 +9,9 @@ It also means that, for web export, web GPU can be utilized instead of the compa
 
 However, not all demos utilize the GPU to the same extent. Some are completely single-shader-based (see [Hamsters](#hamsters)), some make use of multiple shaders working together (see [Trains](#trains)), and some actually leave some stateful logic to the CPU (see [Switching Tiles](#switching-tiles)).
 
+
+To start any of the demos, run the [/scenes/menu/menu.tscn](/scenes/menu/menu.tscn) scene in godot.
+
 #### Controls
 All of these demos can be controlled the same way:
 1. **Mouse + keyboard**
@@ -34,14 +37,28 @@ This means performance scales poorly with high hamster counts and resolutions. H
 TODO: More thorough explanation
 
 ## Splesh
-By generating a mesh made up of *x* disjoint quads, *x* different entities with their own UV space and varying coordinates can be
-rendered extremely efficiently in a single drawcall and without per-pixel looping over entities.
-This is because the fragment shader receives the index of the quad from the vertex shader and can therefore immediately focus on rendering
-without needing to loop over entities to find out which one it belongs to.
+The *splesh* system is a tool for the following challenge: If most of the algorithm should live inside the shader, how can you represent large amounts of potentially
+overlapping entities without needing to loop over all entities at every fragment. Since all fragment shader calls are fully parallelized and no state
+is stored, the only way to figure out if an entity needs to be rendered on a fragment is to calculate its position and if that position overlaps the fragment.
+A loop over **all** entities done at **every** fragment. Not ideal. (This is how the [hamsters demo](#hamsters) does it).
 
+Instead of having a single quad that renders the entire demo, what if we made a mesh out of many smaller quads that each represent an entity?
+A **S**plit **MESH**.
+Then, calculations, such as determining the position of the entity, can happen on the vertex shader level and focus only on a single entity instead of all
+entities that could potentially overlap on a fragment. The vertex shader can easily determine which quad/entity it is currently working on by dividing the vertex index
+by four. The quad can then be offset in space to match the entity position through standard vertex shader operations.
+
+The fragment shader only needs to receive the index of the quad from the vertex shader and can focus on rendering only that entity.
+
+For this, [splesh_generator.gd](/scripts/util/splesh_generator.gd) allows generating such a mesh through two main parameters:
+1. **num_quads**: The amount of quads. All quads are generated as unit quads around (0,0).
+2. **cull_mode**: By default, Godot culls the splesh by its AABB even if the vertex shader has theoretically modified it through shifting vertex positions.
+  This parameter allows turning of culling to guarantee that the quads will always be visible even if the pre-vertex-shader-quad is out of frame.
+
+A good example for the use of the splesh system is the [trains demo](#trains). However, there is also a dedicated splesh demo scene that simply shows of a huge amount
+of independently moving quads (rendered as colored circles).
 My system was able to render 30 million moving "entities" with smooth 60FPS, the real bottleneck beyond this point being generating and storing the giant mesh of quads.
 
-TODO: More thorough explanation
 
 ## Trains
 The train demo renders an infinitely scalable map covered in train tracks, across which trains made up of a dynamically scalable amounts of cars/segments travel.
