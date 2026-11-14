@@ -34,7 +34,17 @@ played forward and backward all from within the editor view without running the 
 The downside of this approach is that every fragment loops over all hamsters to see if it needs to render them.
 This means performance scales poorly with high hamster counts and resolutions. However, if the hamsters were drawn with a [Splesh](#splesh) approach, while performance would no longer suffer, the in-editor rendering for arbitrary hamster counts would also no longer work. This is because dynamic meshes would need to be generated depending on how many hamsters need to be rendered and a normal ColorRect would no longer be viable.
 
-TODO: More thorough explanation
+#### GUI Parameters
+The GUI offers a few parameters for experimenting with the demo code.
+- **Time speed**: The speed at which the uniform time parameter changes. Since the demo is stateless, this speed can also be negative to reverse time.
+- **Size**: The world size. Larger size means more wheels on screen.
+- **Seed**: All pseudo-randomness is based on this seed.
+- **Wheel jitter**: Controls the intensity with which the wheel positions are offset to produce less grid-like layouts.
+- **Hamster count**: The number of hamsters in the demo. High hamster counts scale poorly with high resolutions.
+- **Bobbing speed**: Controls the base speed of the animation of the hamsters bobbing as they move around.
+- **Bobbing strength**: Controls the base intensity of the animation of the hamsters bobbing as they move around.
+- **Walk noisiness**: The intensity with which the path to the hamsters' next goal is offset by random noise during movement.
+- **Wheel desire**: Controls the likelihood for hamsters deciding to run on a wheel as opposed to just walking around aimlessly.
 
 ## Splesh
 The *splesh* system is a tool for the following challenge: If most of the algorithm should live inside the shader, how can you represent large amounts of potentially
