@@ -30,6 +30,16 @@ float sd_oriented_box(vec2 p, vec2 a, vec2 b, float h)
 	return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
 }
 
+// Returns the signed distance of p to a box.
+// The box is defined by the half-length vec2 b.
+// b = (width/2, height/2)
+// https://iquilezles.org/articles/distfunctions2d/
+float sd_box( in vec2 p, in vec2 b )
+{
+    vec2 d = abs(p)-b;
+    return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+}
+
 // Returns the signed distance of p to a bezier curve defined by
 // A(from), B(control), and C(to).
 // https://iquilezles.org/articles/distfunctions2d/

@@ -9,7 +9,7 @@ vec3 debug_draw_int_5_digits(int number, vec2 uv)
 	// Indicate if the number is too large
 	if (float(number) >= pow(10.0, float(digits))) { return vec3(0.0); }
 	
-	vec3 color = vec3(0.5, 0.2, 0.4);
+	vec3 color = vec3(1.0, 1.0, 0.5);
 	int column = int(uv.x * float(digits));
 	int row = int(uv.y * 10.0);
 	
@@ -18,10 +18,16 @@ vec3 debug_draw_int_5_digits(int number, vec2 uv)
 	
 	if (row > 9 - digit_value) { color = vec3(0.0); } // Count up from botton row to top row
 	
-	// GRID_LINES
+	// GRID_LINES (only draw these on black squares to separate them visually)
 	vec2 uv_mod = mod(uv, vec2(1.0 / float(digits), 0.1)); 
-	if (uv_mod.x < 0.01 || uv_mod.y < 0.01 || uv.x < 0.03 || uv.y < 0.03) 
+	if (color == vec3(0.0) && (uv_mod.x < 0.01 || uv_mod.y < 0.01))
 	{ 
+		color = vec3(1.0); 
+	}
+	
+	// OUTER_GRID_LINES
+	if (uv.x < 0.05 || uv.y < 0.05)
+	{
 		color = vec3(1.0, 0.0, 0.5); 
 	}
 	

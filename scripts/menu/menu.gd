@@ -6,6 +6,9 @@ func launch_hamsters():
 func launch_trains():
 	get_tree().change_scene_to_file("res://scenes/demos/Trains.tscn")
 
+func launch_grid_machine():
+	get_tree().change_scene_to_file("res://scenes/demos/GridMachine.tscn")
+
 func launch_splesh_demo():
 	get_tree().change_scene_to_file("res://scenes/demos/Splesh.tscn")
 
