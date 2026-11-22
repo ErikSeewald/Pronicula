@@ -8,12 +8,13 @@
 shader = ExtResource("2_6aeme")
 shader_parameter/time = 0.0
 shader_parameter/seed = 1
-shader_parameter/grid_size = 18.34
-shader_parameter/grid_padding = -0.05
-shader_parameter/num_square_genes = 5
+shader_parameter/grid_size = 16.0
+shader_parameter/gene_falloff = 0.1
+shader_parameter/stretch_distribution = 0.5
 shader_parameter/debug_square_id = 0
-shader_parameter/grid_line_color = Color(0, 0, 0, 1)
-shader_parameter/grid_line_thickness = 0.02
+shader_parameter/debug_show_grid_stage = -1
+shader_parameter/grid_line_color = Color(0.1, 0.1, 0.1, 1)
+shader_parameter/grid_line_thickness = 0.03
 
 [node name="GridMachine" type="Node2D" unique_id=699650666]
 
@@ -24,7 +25,7 @@ metadata/_custom_type_script = "uid://bb7ouwmptxgdo"
 [node name="ColorRect" type="ColorRect" parent="FloatingContainer" unique_id=523229470]
 material = SubResource("ShaderMaterial_58ydm")
 offset_right = 600.0
-offset_bottom = 600.0
+offset_bottom = 603.83
 script = ExtResource("3_um1au")
 metadata/_edit_use_anchors_ = true
 
