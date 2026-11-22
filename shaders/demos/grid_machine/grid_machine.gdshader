@@ -15,12 +15,12 @@ uniform int seed = 1;
 
 group_uniforms grid;
 uniform float grid_size = 16.0;
-uniform float gene_falloff = 0.1;
+uniform float gene_falloff = 0.06;
 uniform float stretch_distribution = 0.5;
 
 group_uniforms debug;
 uniform int debug_square_id: hint_enum("OFF:0", "X:1", "Y:2") = 0;
-uniform int debug_show_grid_stage = -1;
+uniform bool debug_show_genes = false;
 
 group_uniforms grid_lines;
 uniform vec3 grid_line_color: source_color = vec3(0.1);
@@ -40,48 +40,20 @@ struct Gene
 	// neighbors that share the same gene.
 	vec2 dimensions;
 	
-	int id; // Identifier for switch statements
-	vec3 color; // Unique color for debugging.
+	// Unique color for debugging.
+	vec3 color; 
 };
  
 // These gene dimensions were specifically chosen to be (mostly) squares with
 // side lengths of powers of 2 so that squares with a smaller dimension
 // are always fully inside squares with a bigger dimension.
 // For example, a 3x3 could not guarantee non-overlapping alignment with a 2x2.
-// See draw_grid() for how the special cases of 1x2 and 2x1 are handled.
-const int NUM_GENES = 5;
-const Gene GENE_1x1 = Gene(vec2(1.0, 1.0), 0, vec3(1.0, 0.0, 0.0));
-const Gene GENE_1x2 = Gene(vec2(1.0, 2.0), 1, vec3(0.0, 1.0, 0.0));
-const Gene GENE_2x1 = Gene(vec2(2.0, 1.0), 2, vec3(0.0, 0.0, 1.0));
-const Gene GENE_2x2 = Gene(vec2(2.0, 2.0), 3, vec3(1.0, 1.0, 0.0));
-const Gene GENE_4x4 = Gene(vec2(4.0, 4.0), 4, vec3(1.0, 0.0, 1.0));
-const Gene GENE_UNKNOWN = Gene(vec2(1.0, 1.0), -1, vec3(1.0));
-
-// Draws the color of the given gene and returns the new fragment color.
-// Uses the given current color to only draw behind the grid lines.
-vec3 debug_draw_gene_color(Gene gene, vec3 cur_col)
-{
-	// Comparison with a little epsilon because == is not great for vec3 uniforms
-	bool is_grid_line = length(cur_col - grid_line_color) < 0.0001;
-	return is_grid_line ? grid_line_color : gene.color;
-}
-
-// Draws the outline of a square and returns the new fragment color.
-// - coords_in_square: The fragment's coordinates inside the square. Should be in [0.0, 1.0]
-// - line_thickness: Defines the thickness of x: the horizontal lines, and y: the vertical lines.
-//					This thickness is relative to the [0.0, 1.0] coords in square.
-// -	cur_col: The current color of the fragment. This function blends the outline on top.
-vec3 draw_square_outline(vec2 coords_in_square, vec2 line_thickness, vec3 cur_col)
-{		
-	// Get the distance to both edges and then use a step function for the 
-	// line thickness. Combine both with AND.
-	vec2 edge_dist = min(coords_in_square, vec2(1.0) - coords_in_square);
-	float outline_x = step(line_thickness.x, edge_dist.x);
-	float outline_y = step(line_thickness.y, edge_dist.y);
-	float outline_alpha = 1.0 - outline_x * outline_y; 
-	
-	return mask_aa(cur_col, grid_line_color, outline_alpha);
-}
+// See get_gene() for how the special cases of 1x2 and 2x1 are handled.
+const Gene GENE_1x1 = Gene(vec2(1.0, 1.0),vec3(1.0, 0.0, 0.0));
+const Gene GENE_1x2 = Gene(vec2(1.0, 2.0), vec3(0.0, 1.0, 0.0));
+const Gene GENE_2x1 = Gene(vec2(2.0, 1.0), vec3(0.0, 0.0, 1.0));
+const Gene GENE_2x2 = Gene(vec2(2.0, 2.0), vec3(1.0, 1.0, 0.0));
+const Gene GENE_4x4 = Gene(vec2(4.0, 4.0), vec3(1.0, 0.0, 1.0));
 
 // Returns wether the current fragment has the given gene.
 // Uses the fragment's id on the "level" of the grid with the gene's dimensions
@@ -90,7 +62,7 @@ vec3 draw_square_outline(vec2 coords_in_square, vec2 line_thickness, vec3 cur_co
 // which leads to a prettier distribution)
 bool gene_chance(vec2 cur_level_id, Gene gene)
 {
-	float chance_offset = float(gene.id) * gene_falloff;
+	float chance_offset = length(gene.dimensions) * gene_falloff;
 	return hash_vec2_float(cur_level_id, seed) > 0.5 + chance_offset;
 }
 
@@ -129,62 +101,62 @@ Gene get_gene(vec2 square_id)
 	return GENE_1x1;
 }
 
-vec3 draw_grid(vec2 coords, vec3 cur_col)
-{
-	if (coords.x > 0.0 && coords.y > 0.0 && coords.x <= grid_size && coords.y <= grid_size) 
+// Draws the outline of a square and returns the new fragment color.
+// - coords_in_square: The fragment's coordinates inside the square. Should be in [0.0, 1.0]
+// - line_thickness: Defines the thickness of x: the horizontal lines, and y: the vertical lines.
+//					This thickness is relative to the [0.0, 1.0] coords in square.
+// - cur_col: The current color of the fragment. This function blends the outline on top.
+vec3 draw_square_outline(vec2 coords_in_square, vec2 line_thickness, vec3 cur_col)
+{		
+	// Get the distance to both edges and then use a step function for the 
+	// line thickness. Combine both with AND.
+	vec2 edge_dist = min(coords_in_square, vec2(1.0) - coords_in_square);
+	float outline_x = step(line_thickness.x, edge_dist.x);
+	float outline_y = step(line_thickness.y, edge_dist.y);
+	float outline_alpha = 1.0 - outline_x * outline_y; 
+	
+	return mask_aa(cur_col, grid_line_color, outline_alpha);
+}
+
+// Draws the grid lines on top of the given current color and returns the new color.
+// Optionally draws grid-related debug information.
+// - gene: The fragment's grid gene
+// - square_id: The 1x1 square that the fragment falls onto
+// - coords_in_square: The [0.0, 1.0] coordinates within the 1x1 that the fragment falls onto
+// - coords_in_gene: The [0.0, 1.0] coordinates within the gene.dimensions square that the fragment falls onto
+// - cur_col: The fragments current color
+vec3 draw_grid(Gene gene, vec2 square_id, vec2 coords_in_square, vec2 coords_in_gene, vec3 cur_col)
+{	
+	if (debug_show_genes) { cur_col = gene.color; }
+	
+	// Since coords_in_gene may be stretched compared to a 1x1 square, the line thickness
+	// needs to be adjusted to the gene's dimensions
+	vec2 line_thickness = vec2(grid_line_thickness) / gene.dimensions;
+	cur_col = draw_square_outline(coords_in_gene, line_thickness, cur_col);
+	
+	// Debug: Show the coordinates of the square id
+	switch (debug_square_id)
 	{
-		vec2 square_id = floor(coords);
-		vec2 coords_in_square = fract(coords);
-		
-		Gene gene = get_gene(square_id);
-		if (debug_show_grid_stage >= 0)
-		{
-			if (gene.id < NUM_GENES - debug_show_grid_stage) { gene = GENE_UNKNOWN; }
-		}
-		
-		
-		vec2 coords_in_gene = coords_in_square;
-		vec2 line_thickness = vec2(grid_line_thickness);
-		
-		switch (gene.id)
-		{
-			case 4:
-				coords_in_gene = fract(coords / 4.0);
-				line_thickness /= 4.0;
-				break;
-			case 3:
-				coords_in_gene = fract(coords / 2.0);
-				line_thickness /= 2.0;
-				break;
-			case 2:
-				coords_in_gene = fract(vec2(coords.x / 2.0, coords.y));
-				line_thickness /= vec2(2.0, 1.0);
-				break;
-			case 1:
-				coords_in_gene = fract(vec2(coords.x, coords.y  / 2.0));
-				line_thickness /= vec2(1.0, 2.0);
-				break;
-		}
-		
-		cur_col = draw_square_outline(coords_in_gene, line_thickness, cur_col);
-		cur_col = debug_draw_gene_color(gene, cur_col);
-		
-		switch (debug_square_id)
-		{
-			case 1: cur_col = debug_draw_int_5_digits(int(square_id.x), coords_in_square); break;
-			case 2: cur_col = debug_draw_int_5_digits(int(square_id.y), coords_in_square); break;
-		}
+		case 1: cur_col = debug_draw_int_5_digits(int(square_id.x), coords_in_square); break;
+		case 2: cur_col = debug_draw_int_5_digits(int(square_id.y), coords_in_square); break;
 	}
 	
 	return cur_col;
 }
 
-
 void fragment()
 {
-	COLOR.rgb = vec3(1.0);
-
+	// Scale the UV coordinates into grid coordinates and then
+	// get the 1x1 square that the fragment falls onto
 	vec2 coords = UV * grid_size;
+	vec2 square_id = floor(coords);
+	vec2 coords_in_square = fract(coords);
 	
-	COLOR.rgb = draw_grid(coords, COLOR.rgb);
+	// Get the gene for the square and the fragment's scaled coordinates
+	// within the rectangle defined by the gene dimensions
+	Gene gene = get_gene(square_id);
+	vec2 coords_in_gene = fract(coords / gene.dimensions);
+	
+	COLOR.rgb = vec3(1.0);
+	COLOR.rgb = draw_grid(gene, square_id, coords_in_square, coords_in_gene, COLOR.rgb);
 }

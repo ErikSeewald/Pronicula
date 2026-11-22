@@ -9,10 +9,10 @@ shader = ExtResource("2_6aeme")
 shader_parameter/time = 0.0
 shader_parameter/seed = 1
 shader_parameter/grid_size = 16.0
-shader_parameter/gene_falloff = 0.1
+shader_parameter/gene_falloff = 0.06
 shader_parameter/stretch_distribution = 0.5
 shader_parameter/debug_square_id = 0
-shader_parameter/debug_show_grid_stage = -1
+shader_parameter/debug_show_genes = true
 shader_parameter/grid_line_color = Color(0.1, 0.1, 0.1, 1)
 shader_parameter/grid_line_thickness = 0.03
 
