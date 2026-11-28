@@ -7,7 +7,7 @@ become interesting logic puzzles on the GPU. "How could one implement this witho
 An additional quirk of the shader focused approach is that most of these demos can be displayed fully in editing-mode in Godot, never needing the "game" to be run.
 It also means that, for web export, web GPU can be utilized instead of the comparatively slow (specifically for large numbers of entities and logic loops) gdscript.
 
-However, not all demos utilize the GPU to the same extent. Some are completely single-shader-based (see [Hamsters](#hamsters)), some make use of multiple shaders working together (see [Trains](#trains)), and some actually leave some stateful logic to the CPU (see [Switching Tiles](#switching-tiles)).
+However, not all demos utilize the GPU to the same extent. Some are completely single-shader-based (see [Hamsters](#hamsters), [Grid Machine](#grid-machine)), some make use of multiple shaders working together (see [Trains](#trains)), and some actually leave some stateful logic to the CPU (see [Switching Tiles](#switching-tiles)).
 
 To start any of the demos, run the [/scenes/menu/menu.tscn](/scenes/menu/menu.tscn) scene in godot.
 
@@ -150,6 +150,30 @@ The GUI offers a few parameters for experimenting with the train demo code.
 - **Train lifetime**: Defines how many steps between track joints the trains are alive for before they respawn somewhere else.
 - **Train greyness**: Allows changing the saturation of the train colors.
 
+## Grid Machine
+A grid of randomly sized tiles containing various little animated structures. Entirely shader-based.
+
+The shader works by dividing UV space into smaller tiles and remapping fragment coordinates to new UV coordinates within
+their respective tiles so that they can sample their specific animation.
+
+This is done in discrete steps:
+1. Every fragment gets its *square_id*, the x and y coordinate of the 1x1 square it falls into.
+2. Then, the *gene* of that square is sampled.
+   - Multiple squares can combine into a larger tile depending on their gene. So a square having a 2x2 gene means it will combine with 3 other squares to create a larger tile.
+   - To make sure every fragment can directly sample its gene without needing to check its neighbors, the possible dimensions (1x1, 1x2, 2x1, 2x2, 4x4) were specifically 
+   chosen to be (mostly) squares with side lengths of powers of 2 so that squares with a smaller dimension
+   are always fully inside squares with a bigger dimension. For example, a 3x3 could not guarantee non-overlapping alignment with a 2x2, but a 4x4 can.
+   - The algorithm starts at the largest gene level, gives it a random chance to take it, and moves to the lower levels if that gene was not randomly taken.
+   This way, the larger grene grids block out the smaller ones to ensure that, if one square has gene AxB, all other squares within the AxB square also have that gene.
+   - A special case exists for 1x2 and 2x1 since they cannot occupy the same 2x2 square without overlapping: The 2x2 square is used to randomly choose whether the tiles below can become
+   a 1x2 or 2x1. Two of the same type can both occupy the same 2x2 without issue.
+   - In total this means the algorithm does at most 3 checks: First, 4x4, then 2x2, then *either* 1x2 or 2x1, and if a gene was still not chosen then, the 1x1 gene is picked.
+3. Based on the gene dimensions, the fragment UV coordinates are remapped into the tile.
+
+Based on the tiles, the shader does three passes:
+1. Fill space with the background color
+2. Sample the fragment's tile-specific animation
+3. Overlay grid lines on top to separate the tiles
 
 ## Switching Tiles
 A grid of tiles where two tiles periodically switch places with a little moving animation.
